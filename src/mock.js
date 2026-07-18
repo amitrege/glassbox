@@ -93,8 +93,68 @@ const model = {
   },
 };`;
 
+
+const model2048Src = `
+const DIRS = { left: [-1,0], right: [1,0], up: [0,-1], down: [0,1] };
+function slideCore(grid, dir) {
+  const h = grid.length, w = grid[0].length;
+  const g = grid.map(r => r.slice());
+  let scoreDelta = 0;
+  const lines = [];
+  if (dir === "left" || dir === "right") {
+    for (let y = 0; y < h; y++) lines.push([...Array(w)].map((_, x) => [dir === "left" ? x : w - 1 - x, y]));
+  } else {
+    for (let x = 0; x < w; x++) lines.push([...Array(h)].map((_, y) => [x, dir === "up" ? y : h - 1 - y]));
+  }
+  for (const line of lines) {
+    const vals = line.map(([x, y]) => g[y][x]).filter(v => v !== 0);
+    const out = [];
+    for (let i = 0; i < vals.length; i++) {
+      if (i + 1 < vals.length && vals[i] === vals[i + 1]) { out.push(vals[i] * 2); scoreDelta += vals[i] * 2; i++; }
+      else out.push(vals[i]);
+    }
+    line.forEach(([x, y], i) => { g[y][x] = i < out.length ? out[i] : 0; });
+  }
+  return { grid: g, scoreDelta };
+}
+const model = {
+  discoveries: ["Tiles slide to the wall and equal neighbors merge once, score += merged value",
+    "Ineffective moves change nothing and spawn nothing",
+    "After each effective move exactly one new tile appears in a random empty cell (2 ~90%, 4 ~10%)",
+    "Game is over when no direction changes the board"],
+  slide(grid, action) { return slideCore(grid, action); },
+  reconstructEvents(postSlide, next) {
+    const ev = [];
+    for (let y = 0; y < next.length; y++) for (let x = 0; x < next[0].length; x++)
+      if (postSlide[y][x] === 0 && next[y][x] !== 0) ev.push({ x, y, v: next[y][x] });
+    return ev;
+  },
+  statusOf(grid) {
+    for (const d of ["up", "down", "left", "right"]) {
+      const r = slideCore(grid, d);
+      if (JSON.stringify(r.grid) !== JSON.stringify(grid)) return "playing";
+    }
+    return "over";
+  },
+  newGame(w, h, rng) {
+    const g = Array.from({ length: h }, () => Array(w).fill(0));
+    for (let k = 0; k < 2; k++) { const sp = this.spawn(g, rng); if (sp) g[sp.y][sp.x] = sp.v; }
+    return g;
+  },
+  spawn(grid, rng) {
+    const e = [];
+    for (let y = 0; y < grid.length; y++) for (let x = 0; x < grid[0].length; x++) if (grid[y][x] === 0) e.push({ x, y });
+    if (!e.length) return null;
+    const c = e[Math.floor(rng() * e.length)];
+    return { x: c.x, y: c.y, v: rng() < 0.9 ? 2 : 4 };
+  },
+};`;
+
 let calls = 0;
-export async function mockComplete() {
+export async function mockComplete({ purpose } = {}) {
+  if (purpose === "2048_synthesize") {
+    return "NARRATION: Standard 2048 mechanics — slide-and-merge with one random spawn per effective move.\n```js" + model2048Src + "\n```";
+  }
   calls++;
   const wrong = calls === 1;
   const narration = wrong

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLASSBOX — play the reconstruction (2048)</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="gb.css">
+<style>
+  body { overflow-y: auto; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 28px 32px 80px; }
+  header { display: flex; align-items: center; gap: 18px; margin-bottom: 26px; }
+  header .spacer { flex: 1; }
+  .banner { border: 1px solid rgba(63,185,80,.55); background: rgba(63,185,80,.05); padding: 16px 20px; margin-bottom: 18px; }
+  .banner .big { font-size: 15px; line-height: 1.65; color: #e6edf3; }
+  .banner .big em { font-style: normal; color: var(--green); }
+  .banner .small { margin-top: 8px; color: var(--dim); font-size: 11.5px; }
+  .controls { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .controls .spacer { flex: 1; }
+  .readout .v { font-size: 17px; color: #e6edf3; font-variant-numeric: tabular-nums; }
+  .readout .k { font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--dimmer); margin-left: 6px; }
+  .stage { display: flex; justify-content: center; margin: 6px 0 10px; }
+  #grid { display: grid; gap: 8px; background: var(--panel2); border: 1px solid var(--border); padding: 10px; }
+  .tile {
+    width: 84px; height: 84px; display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 700; background: #171b22; color: #e6edf3; border: 1px solid var(--border-dim);
+  }
+  .tile.v0 { color: transparent; }
+  .tile.v2 { background:#20262f } .tile.v4 { background:#28303c }
+  .tile.v8 { background:#5b4623; } .tile.v16 { background:#6d4f22 }
+  .tile.v32 { background:#7d4a28 } .tile.v64 { background:#8a3f2a }
+  .tile.v128, .tile.v256 { background:#7a6a2c } .tile.v512, .tile.v1024, .tile.v2048 { background:#8a7a26 }
+  .hint { text-align: center; color: var(--dimmer); font-size: 11px; margin-bottom: 26px; }
+  #over { text-align: center; color: var(--red); font-size: 14px; letter-spacing: .2em; margin: 6px 0 12px; display: none; }
+  section.learned .head { display: flex; align-items: center; gap: 14px; margin: 22px 0 8px; }
+  section.learned .head::after { content: ""; flex: 1; border-top: 1px solid var(--border-dim); }
+  ul.disc li { color: var(--dim); font-size: 12.5px; }
+  .fail { color: var(--red); padding: 24px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="index.html"><span class="logo"></span>GLASSBOX</a>
+    <span class="dimmer">/</span>
+    <span id="pageTitle">play the reconstruction — 2048</span>
+    <div class="spacer"></div>
+    <a class="btn" id="watchLink" href="#">▶ watch it being learned</a>
+  </header>
+  <div id="content">
+    <div class="banner">
+      <div class="big">Every rule here — sliding, merging, scoring, spawning, game over — was
+        <em>learned by the AI from observation</em> and verified by exact replay. This is not the original game's code.</div>
+      <div class="small" id="bannerSmall"></div>
+    </div>
+    <div class="controls">
+      <button class="btn primary" id="newGame">new game</button>
+      <span class="dimmer">arrow keys to move</span>
+      <span class="spacer"></span>
+      <span class="readout"><span class="v" id="score">0</span><span class="k">score</span></span>
+    </div>
+    <div class="stage"><div id="grid"></div></div>
+    <div id="over">— NO MOVES LEFT · the learned game-over rule fired —</div>
+    <div class="hint">the AI's learned <b>spawn rule</b> places every new tile · its learned <b>merge rule</b> computes the score</div>
+    <section class="learned" id="learnedSec" style="display:none">
+      <div class="head"><span class="lbl">what the AI worked out on its own</span></div>
+      <ul class="disc" id="discList"></ul>
+    </section>
+    <div class="backlink" style="margin-top:26px"><a class="btn" href="index.html">← all runs</a></div>
+  </div>
+</div>
+<div id="jserr"></div>
+<script src="gb.js"></script>
+<script>
+"use strict";
+const runId = qparam("run");
+const $ = id => document.getElementById(id);
+let model = null, grid = null, score = 0, rng = null, over = false;
+
+(async function boot() {
+  if (!runId) { fail("no run specified"); return; }
+  $("watchLink").href = `watch.html?run=${encodeURIComponent(runId)}`;
+  let meta = {}, code = "";
+  try {
+    const [mr, cr] = await Promise.all([
+      fetch(`../runs/${encodeURIComponent(runId)}/meta.json`, { cache: "no-store" }),
+      fetch(`../runs/${encodeURIComponent(runId)}/model_final.js`, { cache: "no-store" }),
+    ]);
+    if (!cr.ok) throw new Error(`model_final.js — HTTP ${cr.status}`);
+    code = await cr.text();
+    if (mr.ok) meta = await mr.json();
+  } catch (e) { fail("could not load the learned model: " + e.message); return; }
+  try {
+    model = new Function(code + "\n;return model;")();
+    for (const fn of ["slide", "statusOf", "newGame", "spawn"]) if (typeof model[fn] !== "function") throw new Error(`model.${fn} missing`);
+  } catch (e) { fail("the learned model failed to evaluate: " + e.message); return; }
+  $("bannerSmall").textContent = `model ${meta.model || "?"} · run ${runId} · verified against ${meta.episodes ?? "?"} recorded episodes (${meta.totalSteps ?? "?"} moves)`;
+  const disc = Array.isArray(meta.discoveries) ? meta.discoveries : [];
+  if (disc.length) { $("learnedSec").style.display = ""; $("discList").innerHTML = disc.map(d => `<li>${esc(d)}</li>`).join(""); }
+  document.addEventListener("keydown", onKey);
+  $("newGame").addEventListener("click", newGame);
+  newGame();
+})();
+
+function fail(msg) { $("content").innerHTML = `<div class="fail">${esc(msg)}</div><a class="btn" href="index.html">← back</a>`; }
+
+function newGame() {
+  const seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
+  rng = mulberry32(seed);
+  try { grid = model.newGame(4, 4, rng); } catch (e) { fail("model.newGame threw: " + e.message); return; }
+  score = 0; over = false;
+  $("over").style.display = "none";
+  render();
+}
+
+function onKey(ev) {
+  const map = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
+  const dir = map[ev.key];
+  if (!dir || !grid || over) return;
+  ev.preventDefault();
+  let sr;
+  try { sr = model.slide(grid, dir); } catch (e) { fail("model.slide threw: " + e.message); return; }
+  const g2 = sr && sr.grid ? sr.grid : sr;
+  const sd = sr && sr.scoreDelta != null ? Number(sr.scoreDelta) : 0;
+  if (JSON.stringify(g2) === JSON.stringify(grid)) return; // learned no-op rule
+  grid = g2; score += sd;
+  try {
+    const sp = model.spawn(grid, rng);
+    if (sp && grid[sp.y] && grid[sp.y][sp.x] === 0) grid[sp.y][sp.x] = sp.v;
+  } catch (e) {}
+  try { if (String(model.statusOf(grid)) === "over") { over = true; $("over").style.display = ""; } } catch (e) {}
+  render();
+}
+
+function render() {
+  const g = $("grid");
+  g.style.gridTemplateColumns = `repeat(${grid[0].length}, 84px)`;
+  g.innerHTML = grid.map(row => row.map(v =>
+    `<div class="tile v${v <= 2048 ? v : 2048}">${v || ""}</div>`).join("")).join("");
+  $("score").textContent = String(score);
+}
+</script>
+</body>
+</html>

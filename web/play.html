@@ -21,6 +21,17 @@
     margin-bottom: 8px;
   }
   .caveat { color: var(--dimmer); font-size: 11px; line-height: 1.6; margin: 0 2px 22px; }
+  .variant {
+    border: 1px solid rgba(210, 153, 34, 0.65);
+    background: rgba(210, 153, 34, 0.07);
+    padding: 13px 18px;
+    margin: 0 0 16px;
+    color: #e6edf3;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .variant b { color: var(--amber); }
+  .variant .how { color: var(--dim); font-size: 11.5px; margin-top: 4px; }
   .banner .big { font-size: 15px; line-height: 1.65; color: #e6edf3; }
   .banner .big em { font-style: normal; color: var(--green); }
   .banner .small { margin-top: 8px; color: var(--dim); font-size: 11.5px; }
@@ -100,6 +111,7 @@
     </div>
     <div class="caveat" id="caveat" style="display:none">One caveat: mine placement in brand-new games is the model's guess —
       exact replay can only verify reactions to actions, not hidden placement.</div>
+    <div class="variant" id="variantBox" style="display:none"></div>
 
     <div class="controls">
       <select class="btn" id="preset">
@@ -155,6 +167,24 @@ let state = null;
 let moves = 0;
 let geom = null;         // {cell,w,h} from drawBoard
 let gameOver = false;
+let hoverCell = null;    // {x,y} of hovered digit — drives the neighborhood visualizer
+
+// What each digit counts, per learned game (presentation metadata — the rule
+// itself lives in the learned model; these offsets mirror its discoveries).
+const N8 = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+const KNIGHT = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+const NEIGH = {
+  minesweeper: { offs: N8, torus: false, note: null },
+  minesweeper_knight: {
+    offs: KNIGHT, torus: false,
+    note: "each number counts mines a <b>knight's move</b> away — not the adjacent cells",
+  },
+  minesweeper_twisted: {
+    offs: KNIGHT, torus: true,
+    note: "each number counts mines a <b>knight's move</b> away, and the board <b>wraps around the edges</b> like a torus",
+  },
+};
+let neigh = null;
 
 (async function boot() {
   if (!runId) { fail("no run specified — open this page as play.html?run=<id>"); return; }
@@ -198,6 +228,17 @@ let gameOver = false;
     `model ${meta.model || "?"} · run ${runId}` +
     (meta.converged ? ` · converged after ${meta.versions} model version${meta.versions === 1 ? "" : "s"}` : " · did not converge") +
     ` · the code below is executing this game right now`;
+
+  neigh = NEIGH[meta.game] || null;
+  if (neigh && neigh.note) {
+    $("variantBox").style.display = "";
+    $("variantBox").innerHTML =
+      `⚠ <b>This is not classic Minesweeper.</b> In the game the AI learned, ${neigh.note}.
+       The numbers below are exactly right — for <b>that</b> game.
+       <div class="how">hover any revealed number to see which cells it counts — this is the rule the AI discovered from data</div>`;
+  } else if (neigh) {
+    $("hint").textContent = "left-click reveal · right-click flag · hover a number to see which cells it counts";
+  }
 
   const disc = Array.isArray(meta.discoveries) ? meta.discoveries : (model.discoveries || []);
   if (disc.length) {
@@ -246,6 +287,7 @@ function refresh() {
     return;
   }
   geom = drawBoard($("board"), obs.grid, { cell: cellSizeFor(), minCell: 22, maxCell: 40 });
+  paintNeighborhood(obs);
 
   // vars readout (counter etc.)
   const vars = obs.vars || {};
@@ -297,6 +339,27 @@ function act(type, x, y) {
   refresh();
 }
 
+// Highlight the cells the hovered digit counts (amber = counted, green ring = the digit).
+function paintNeighborhood(obs) {
+  if (!neigh || !hoverCell || !geom) return;
+  const { x, y } = hoverCell;
+  const row = obs.grid[y];
+  if (!row || !/^[0-8]$/.test(String(row[x]))) return;
+  const ctx = $("board").getContext("2d");
+  const { cell } = geom;
+  const w = geom.w, h = geom.h;
+  for (const [dx, dy] of neigh.offs) {
+    let nx = x + dx, ny = y + dy;
+    if (neigh.torus) { nx = ((nx % w) + w) % w; ny = ((ny % h) + h) % h; }
+    if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+    ctx.fillStyle = "rgba(210,153,34,0.38)";
+    ctx.fillRect(nx * cell + 1, ny * cell + 1, cell - 2, cell - 2);
+  }
+  ctx.strokeStyle = "#3fb950";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x * cell + 1.5, y * cell + 1.5, cell - 3, cell - 3);
+}
+
 function wireInput() {
   const canvas = $("board");
   const cellAt = ev => {
@@ -315,6 +378,16 @@ function wireInput() {
     ev.preventDefault();
     const c = cellAt(ev);
     if (c) act("flag", c.x, c.y);
+  });
+  canvas.addEventListener("mousemove", ev => {
+    const c = cellAt(ev);
+    const changed = !c || !hoverCell || c.x !== hoverCell.x || c.y !== hoverCell.y;
+    hoverCell = c;
+    if (changed && !gameOver) refresh();
+  });
+  canvas.addEventListener("mouseleave", () => {
+    hoverCell = null;
+    if (!gameOver) refresh();
   });
   $("newGame").addEventListener("click", newGame);
   $("preset").addEventListener("change", newGame);

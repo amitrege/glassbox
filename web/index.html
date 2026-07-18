@@ -111,7 +111,9 @@
     const playLink = m.converged !== true ? ""
       : m.track === "famous"
         ? `<a class="btn" href="play.html?run=${id}">play the reconstruction</a>`
-        : `<a class="btn" href="../runs/${id}/clone.html" target="_blank">play the reconstruction</a>`;
+        : m.track === "famous2048"
+          ? `<a class="btn" href="play2048.html?run=${id}">play the reconstruction</a>`
+          : `<a class="btn" href="../runs/${id}/clone.html" target="_blank">play the reconstruction</a>`;
     const planStat = m.planLen != null
       ? `<span class="stat"><span class="v green">${fmtInt(m.planLen)}</span> <span class="k">move plan${m.planLen === m.realOptimal ? " · true optimum" : ""}</span></span>`
       : "";

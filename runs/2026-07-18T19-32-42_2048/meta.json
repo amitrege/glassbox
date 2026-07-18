@@ -1,0 +1,23 @@
+{
+  "id": "2026-07-18T19-32-42_2048",
+  "startedAt": "2026-07-18T19:32:42.751Z",
+  "env": "env_B",
+  "envKind": "numgrid",
+  "track": "famous2048",
+  "game": "game2048",
+  "title": "2048",
+  "model": "claude-opus-4-8",
+  "driver": "sdk",
+  "finishedAt": "2026-07-18T19:33:32.352Z",
+  "converged": true,
+  "versions": 1,
+  "episodes": 13,
+  "totalSteps": 488,
+  "discoveries": [
+    "Mechanics are standard 2048: tiles slide in the action direction, each pair of equal adjacent tiles merges once into their sum (checked across all ~300 moves).",
+    "scoreDelta equals the sum of all newly-created merged tile values (e.g. E0 right merging 2+2 gives +4; two merges of 2+2 and 8+8 give +16+... matching every counter increment).",
+    "After any move that changes the board, exactly one new tile appears on a previously-empty cell; a move that changes nothing spawns nothing (verified on all no-op frames like E0 down/down, E2 repeated rights).",
+    "Spawned tile value is 2 in the large majority of cases and occasionally 4 (both observed in logs); starting boards contain two such tiles.",
+    "Game status becomes 'over' exactly when the board is full and no two orthogonally-adjacent cells are equal (checked on all terminal frames E0-E3)."
+  ]
+}
