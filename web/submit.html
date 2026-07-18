@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLASSBOX — submit a game</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="gb.css">
+<style>
+  body { overflow-y: auto; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 32px 80px; }
+  header.hero { margin-bottom: 34px; }
+  .hero .brand { font-size: 18px; letter-spacing: 0.38em; }
+  .hero h1 { font-size: 18px; font-weight: 500; line-height: 1.55; color: #e6edf3; margin: 20px 0 8px; }
+  .hero h1 em { font-style: normal; color: var(--green); }
+  .hero .sub { color: var(--dim); margin: 0; }
+  .hero .back { font-size: 11px; color: var(--dimmer); letter-spacing: 0.08em; }
+  .hero .back:hover { color: var(--dim); }
+
+  .runs-lbl { margin: 34px 0 0; display: flex; align-items: center; gap: 14px; }
+  .runs-lbl::after { content: ""; flex: 1; border-top: 1px solid var(--border-dim); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 22px 24px 20px;
+    margin-top: 18px;
+  }
+  form .row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  form label { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
+  form label .opt { color: var(--faint); letter-spacing: 0.06em; text-transform: none; }
+  input[type="text"], select, textarea {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 8px 10px;
+    outline: none;
+  }
+  input[type="text"]:focus, select:focus, textarea:focus { border-color: #3d4450; }
+  textarea { min-height: 260px; resize: vertical; line-height: 1.45; white-space: pre; }
+  .actions { display: flex; align-items: center; gap: 14px; }
+  #status { font-size: 12px; }
+
+  .notice {
+    border: 1px solid var(--amber);
+    background: var(--amber-dim);
+    color: var(--amber);
+    border-radius: 2px;
+    padding: 14px 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    margin-top: 18px;
+  }
+  .notice b { letter-spacing: 0.12em; text-transform: uppercase; font-size: 10px; }
+  .notice .plan { color: var(--dim); }
+  .notice code { color: var(--text); background: var(--panel2); padding: 1px 5px; border-radius: 2px; }
+
+  .finequeue { margin-top: 26px; color: var(--dimmer); font-size: 11px; line-height: 1.7; }
+  footer { margin-top: 56px; color: var(--faint); font-size: 11px; letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <span class="brand"><span class="logo"></span>GLASSBOX</span>
+    <h1>Give the agent a game it has <em>never seen</em>.</h1>
+    <p class="sub">Paste a PuzzleScript game or describe a rule mutation of a familiar one.
+       Submissions land in a review queue; a harness operator runs the learning agent on the
+       interesting ones and the resulting run appears in the gallery.</p>
+    <p><a class="back" href="index.html">&larr; back to recorded runs</a></p>
+  </header>
+
+  <div class="runs-lbl"><span class="lbl">Submit a game</span></div>
+
+  <div id="unconfigured" class="notice" style="display:none">
+    <b>backend not configured yet</b><br>
+    This page needs the optional InsForge backend. When <code>web/insforge-config.js</code>
+    exists (copy <code>web/insforge-config.example.js</code> and fill in your project's URL +
+    anon key), the form below will insert your submission into the hosted
+    <code>submissions</code> table — a moderated queue the harness operator pulls from.
+    <span class="plan">Until then the form is disabled; nothing you type here is sent anywhere.</span>
+  </div>
+
+  <div class="panel">
+    <form id="f">
+      <div class="row">
+        <label for="name">name <span class="opt">(optional — for credit in the gallery)</span></label>
+        <input type="text" id="name" name="name" maxlength="120" autocomplete="off" placeholder="anonymous">
+      </div>
+      <div class="row">
+        <label for="kind">game type</label>
+        <select id="kind" name="kind" class="btn" style="align-self:flex-start; text-transform:none;">
+          <option value="puzzlescript">PuzzleScript source</option>
+          <option value="rule-mutation">rule-mutation idea</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="content">the game</label>
+        <textarea id="content" name="content" spellcheck="false" required
+placeholder="PuzzleScript: paste the full source (OBJECTS / LEGEND / RULES / LEVELS ...).
+
+Rule mutation: name the base game and the twist, e.g.
+  &quot;Minesweeper, but the numbers count mines a knight's move away on a torus.&quot;"></textarea>
+      </div>
+      <div class="actions">
+        <button type="submit" id="go" class="btn primary">submit to the queue</button>
+        <span id="status" class="dim"></span>
+      </div>
+    </form>
+  </div>
+
+  <p class="finequeue">Submissions are stored, not executed: nothing runs automatically.
+     An operator reviews the queue, runs the agent locally against picked entries, and publishes
+     the resulting learning logs. Don't submit anything secret — the queue is a plain database table.</p>
+
+  <footer>glassbox · rules from observation · submissions land in a moderated queue</footer>
+</div>
+<div id="jserr"></div>
+
+<script src="insforge-config.js"></script><!-- optional; 404 is fine — page then shows the unconfigured notice -->
+<script src="gb.js"></script>
+<script>
+"use strict";
+(function () {
+  var cfg = (typeof window.INSFORGE === "object" && window.INSFORGE &&
+             typeof window.INSFORGE.baseUrl === "string" &&
+             window.INSFORGE.baseUrl.indexOf("YOUR-APP") === -1)
+    ? window.INSFORGE : null;
+
+  var form = document.getElementById("f");
+  var status = document.getElementById("status");
+  var go = document.getElementById("go");
+
+  if (!cfg) {
+    document.getElementById("unconfigured").style.display = "block";
+    go.disabled = true;
+    go.classList.remove("primary");
+    go.style.opacity = "0.45";
+    go.style.cursor = "not-allowed";
+    form.addEventListener("submit", function (ev) { ev.preventDefault(); });
+    return;
+  }
+
+  form.addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var name = document.getElementById("name").value.trim();
+    var kind = document.getElementById("kind").value;
+    var content = document.getElementById("content").value.trim();
+    if (!content) {
+      status.innerHTML = '<span class="amber">paste a game first.</span>';
+      return;
+    }
+    go.disabled = true;
+    status.textContent = "submitting…";
+    try {
+      // InsForge PostgREST-style insert: body is an ARRAY of rows.
+      // docs: docs.insforge.dev/sdks/rest/database.md ("Insert Records")
+      var r = await fetch(cfg.baseUrl.replace(/\/+$/, "") + "/api/database/records/submissions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + (cfg.anonKey || ""),
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify([{ name: name || null, kind: kind, content: content }])
+      });
+      if (!r.ok) {
+        var detail = "";
+        try { detail = (await r.json()).message || ""; } catch (e) { /* ignore */ }
+        throw new Error("HTTP " + r.status + (detail ? " — " + detail : ""));
+      }
+      form.reset();
+      status.innerHTML = '<span class="chip green">submitted</span> ' +
+        '<span class="dim">it’s in the queue — thanks!</span>';
+    } catch (e) {
+      status.innerHTML = '<span class="red">could not submit: ' + esc(e.message) + "</span>";
+    } finally {
+      go.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

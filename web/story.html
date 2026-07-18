@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLASSBOX — the story</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="gb.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { display: grid; grid-template-rows: auto minmax(0,1fr) auto; }
+
+  header { display:flex; align-items:center; gap:16px; padding:12px 20px; border-bottom:1px solid var(--border); background:var(--panel2); }
+  header .title { color:#e6edf3; font-size:13px; }
+  header .spacer { flex:1; }
+  #beatNo { color:var(--dimmer); font-size:11px; letter-spacing:.15em; }
+
+  /* one beat at a time, centered */
+  #stage { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px 40px; min-height:0; text-align:center; }
+  #kicker { font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:var(--dimmer); margin-bottom:14px; min-height:14px; }
+  #kicker.green { color:var(--green); } #kicker.red { color:var(--red); } #kicker.amber { color:var(--amber); }
+  #headline { font-size:30px; line-height:1.35; color:#e6edf3; max-width:900px; font-weight:700; }
+  #headline .g { color:var(--green); } #headline .r { color:var(--red); } #headline .a { color:var(--amber); }
+  #sub { font-size:14.5px; line-height:1.7; color:var(--dim); max-width:760px; margin-top:12px; }
+  #sub b { color:#e6edf3; }
+  #visual { margin-top:26px; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; max-width:100%; }
+  #visual .cap { color:var(--dimmer); font-size:11px; margin-top:10px; letter-spacing:.06em; }
+
+  /* board / montage */
+  .boardbox { display:inline-flex; flex-direction:column; align-items:center; }
+  .mcount { color:var(--dimmer); font-size:11px; margin-top:8px; font-variant-numeric:tabular-nums; }
+
+  /* code beat */
+  #codeBox { text-align:left; background:var(--panel); border:1px solid var(--border); max-width:min(920px, 90vw); max-height:46vh; overflow:auto; padding:12px 0; }
+  #codeBox pre { margin:0; font-size:11.5px; line-height:1.5; white-space:pre; }
+  #codeBox .cl { padding:0 18px; }
+  #codeBox .cl.added { background:rgba(63,185,80,.10); box-shadow:inset 2px 0 0 var(--green); }
+  #codeBox .cl .kw{color:#6b9fd6} #codeBox .cl .str{color:#a3853a} #codeBox .cl .num{color:#7aa2a8} #codeBox .cl .cm{color:#4b5361;font-style:italic}
+
+  /* comparison beat */
+  .compare { display:flex; gap:34px; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
+  .compare .side { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .compare .side .t { font-size:10px; letter-spacing:.22em; text-transform:uppercase; }
+  .compare .side .t.real { color:var(--green); } .compare .side .t.model { color:var(--red); }
+  .fieldnote { margin-top:14px; font-size:14px; color:#e6edf3; }
+  .fieldnote .r { color:var(--red); } .fieldnote .g { color:var(--green); }
+
+  /* discoveries beat */
+  #discBox { text-align:left; max-width:820px; max-height:46vh; overflow:auto; border:1px solid rgba(63,185,80,.5); background:rgba(63,185,80,.05); padding:16px 22px; }
+  #discBox li { color:var(--text); font-size:13px; line-height:1.75; margin:6px 0; list-style:none; }
+  #discBox li::before { content:"✓  "; color:var(--green); }
+
+  .bigmark { font-size:64px; line-height:1; margin-bottom:6px; }
+  .btnrow { display:flex; gap:14px; margin-top:22px; justify-content:center; flex-wrap:wrap; }
+
+  /* transport */
+  footer { display:flex; align-items:center; gap:18px; padding:14px 22px; border-top:1px solid var(--border); background:var(--panel2); }
+  #dots { display:flex; gap:8px; flex:1; justify-content:center; }
+  .dot { width:26px; height:4px; background:#262c37; cursor:pointer; }
+  .dot.done { background:#3a4250; }
+  .dot.cur { background:var(--green); }
+  #nextBtn { min-width:130px; }
+  #nextBtn.pulse { animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(63,185,80,.0)} 50%{box-shadow:0 0 0 4px rgba(63,185,80,.25)} }
+  .khint { color:var(--faint); font-size:10.5px; letter-spacing:.08em; }
+  .fail { color:var(--red); padding:40px; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="index.html"><span class="logo"></span>GLASSBOX</a>
+  <span class="dimmer">/</span>
+  <span class="title" id="runTitle">the story</span>
+  <div class="spacer"></div>
+  <span id="beatNo"></span>
+  <a class="btn" id="replayLink" href="#">full replay ↗</a>
+</header>
+
+<div id="stage">
+  <div id="kicker"></div>
+  <div id="headline"></div>
+  <div id="sub"></div>
+  <div id="visual"></div>
+</div>
+
+<footer>
+  <button class="btn" id="prevBtn">← back</button>
+  <div id="dots"></div>
+  <label class="khint" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="auto"> auto-advance</label>
+  <span class="khint">→ / space to advance</span>
+  <button class="btn primary" id="nextBtn">next →</button>
+</footer>
+<div id="jserr"></div>
+
+<script src="insforge-config.js" onerror="void 0"></script>
+<script src="datasource.js"></script>
+<script src="gb.js"></script>
+<script>
+"use strict";
+const runId = qparam("run");
+const $ = id => document.getElementById(id);
+let EVENTS = [], META = {}, BEATS = [], cur = 0, anim = null, autoTimer = null;
+
+(async function boot() {
+  if (!runId) return fail("no run specified — open as story.html?run=<id>");
+  $("replayLink").href = `watch.html?run=${encodeURIComponent(runId)}`;
+  try {
+    const txt = await gbData.fetchRunText(runId, "events.jsonl");
+    EVENTS = txt.split("\n").filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    try { META = await gbData.fetchRunJson(runId, "meta.json"); } catch (e) { META = {}; }
+  } catch (e) { return fail("could not load run: " + e.message); }
+  $("runTitle").textContent = `the story — ${META.title || runId}`;
+  document.title = `GLASSBOX — ${META.title || runId}`;
+  BEATS = extractBeats(EVENTS, META);
+  buildDots();
+  const at = parseInt(qparam("beat") || "0", 10);
+  show(Math.max(0, Math.min(BEATS.length - 1, isNaN(at) ? 0 : at)));
+  wire();
+})();
+
+function fail(m) { $("stage").innerHTML = `<div class="fail">${esc(m)}</div>`; }
+
+/* ---------- beat extraction: the salient points of a run ---------- */
+function extractBeats(events, meta) {
+  const beats = [];
+  const stepIdx = events.map((e, i) => [e, i]).filter(([e]) => e.type === "step");
+  const firstObs = stepIdx.length ? stepIdx[0][0].obs : null;
+  const exploreSum = events.find(e => e.type === "explore_summary") || {};
+  const isPS = meta.track === "ps";
+
+  beats.push({ kind: "title", obs: firstObs });
+
+  const exploreEnd = events.findIndex(e => e.type === "explore_summary");
+  beats.push({
+    kind: "probe",
+    from: stepIdx.length ? stepIdx[0][1] : 0,
+    to: exploreEnd > 0 ? exploreEnd : events.length - 1,
+    episodes: exploreSum.episodes, steps: exploreSum.totalSteps, objects: exploreSum.objects,
+  });
+
+  let lastCode = null, theoryCount = 0;
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    if (e.type === "hypothesis") {
+      theoryCount++;
+      beats.push({ kind: "theory", version: e.version, narration: e.narration, code: e.code, prevCode: lastCode, isPS });
+      lastCode = e.code;
+    } else if (e.type === "verify") {
+      if (e.ok) beats.push({ kind: "pass", version: e.version, passed: e.passed, total: (e.passed || 0) + (e.failed || 0) });
+      else if (e.loadError) beats.push({ kind: "fail-load", version: e.version, error: e.loadError, isPS });
+      else beats.push({ kind: "fail", version: e.version, failure: e.firstFailure, passed: e.passed, total: (e.passed || 0) + (e.failed || 0), epId: (e.episodes || []).find(x => !x.ok)?.id });
+    } else if (e.type === "refuted_by_fresh") {
+      beats.push({ kind: "fresh-fail", version: e.version, failure: e.firstFailure });
+    } else if (e.type === "plan") {
+      const planSteps = [];
+      for (let j = i; j < events.length; j++) if (events[j].type === "plan_step") planSteps.push(events[j]);
+      beats.push({ kind: "experiment", len: e.len, states: e.states, planSteps, startObs: nearestObsBefore(events, i) });
+    } else if (e.type === "converged") {
+      beats.push({ kind: "converged", version: e.version, episodes: e.episodes, totalSteps: e.totalSteps, discoveries: e.discoveries || meta.discoveries || [], planLen: e.planLen ?? meta.planLen, realOptimal: e.realOptimal ?? meta.realOptimal });
+    }
+  }
+  beats.push({ kind: "outro" });
+  return beats;
+}
+
+function nearestObsBefore(events, i) {
+  for (let j = i; j >= 0; j--) if (events[j].type === "step" && events[j].obs) return events[j].obs;
+  return null;
+}
+
+/* ---------- rendering ---------- */
+function setText(kicker, kclass, headline, sub) {
+  $("kicker").textContent = kicker; $("kicker").className = kclass || "";
+  $("headline").innerHTML = headline;
+  $("sub").innerHTML = sub || "";
+}
+
+function boardHTML(id) { return `<div class="boardbox"><span class="boardframe"><canvas id="${id}"></canvas></span><div class="mcount" id="${id}-cap"></div></div>`; }
+
+function show(n) {
+  cur = Math.max(0, Math.min(BEATS.length - 1, n));
+  if (anim) { cancelAnimationFrame(anim.raf); clearInterval(anim.iv); anim = null; }
+  const b = BEATS[cur];
+  const V = $("visual"); V.innerHTML = "";
+  $("beatNo").textContent = `${cur + 1} / ${BEATS.length}`;
+  $("prevBtn").disabled = cur === 0;
+  $("nextBtn").textContent = cur === BEATS.length - 1 ? "done" : "next →";
+  $("nextBtn").classList.toggle("pulse", cur === 0);
+  renderBeat(b, V);
+  updateDots();
+  scheduleAuto(b);
+}
+
+function renderBeat(b, V) {
+  const game = META.title || META.game || "this game";
+  switch (b.kind) {
+    case "title": {
+      setText("a recorded learning run", "",
+        `An AI was dropped into <span class="a">${esc(game)}</span> with no idea what it was.`,
+        `It was never told the name, the goal, or what any symbol means. What follows is the append-only record of how it worked the rules out — and proved them.`);
+      V.innerHTML = boardHTML("b0");
+      if (b.obs) drawBoard($("b0"), b.obs, { maxW: 420, maxH: 300 });
+      $("b0-cap") && ($("b0-cap").textContent = "the first thing it ever saw");
+      break;
+    }
+    case "probe": {
+      setText("act i — probe", "",
+        `It played blind. <span class="a">${fmtInt(b.steps)}</span> actions across ${fmtInt(b.episodes)} games.`,
+        `A scripted probe policy pokes at the world — random moves plus deliberately “pointless” ones — while every single observation is written to an append-only log. The AI's job comes next: explain <b>all</b> of it.`);
+      V.innerHTML = boardHTML("bm");
+      const frames = [];
+      for (let i = b.from; i <= b.to; i++) if (EVENTS[i]?.type === "step" && EVENTS[i].obs) frames.push(EVENTS[i]);
+      let k = 0;
+      const draw = () => {
+        const f = frames[k % frames.length];
+        drawBoard($("bm"), f.obs, { maxW: 420, maxH: 280 });
+        $("bm-cap").textContent = `${f.ep} · ${actionLabel(f.action)}`;
+        k++;
+      };
+      draw();
+      anim = { iv: setInterval(draw, 140), raf: 0 };
+      break;
+    }
+    case "theory": {
+      const first = b.version === 1;
+      setText(`act ii — theory v${b.version}`, "amber",
+        first ? `Then it wrote its theory of the game — as <span class="a">executable code</span>.`
+              : `Theory <span class="a">v${b.version}</span> — revised under refutation.`,
+        `<b>In its own words:</b> ${esc(b.narration || "")}${first ? `<br><span class="dimmer">Beliefs written as code can't be vague — every rule below either reproduces reality or gets refuted.</span>` : ""}`);
+      const prevLines = new Set((b.prevCode || "").split("\n"));
+      const lines = String(b.code || "").split("\n").map(l =>
+        `<div class="cl${b.prevCode && !prevLines.has(l) && l.trim() ? " added" : ""}">${highlightLine(l)}</div>`).join("");
+      V.innerHTML = `<div id="codeBox"><pre>${lines}</pre></div><div class="cap">${b.prevCode ? "green lines are what changed" : (b.isPS ? "a complete PuzzleScript program" : "a complete executable model")} · scroll to read</div>`;
+      break;
+    }
+    case "pass": {
+      setText("act iii — verification", "green",
+        `The verifier replayed every recorded game through the code. <span class="g">${b.passed}/${b.total} exact.</span>`,
+        `Every grid, every counter, every win and loss — reproduced cell-for-cell. But fitting what you've seen is the easy part…`);
+      V.innerHTML = `<div class="bigmark">✅</div>`;
+      break;
+    }
+    case "fail-load": {
+      setText("act iii — verification", "red",
+        b.isPS ? `The compiler refused it.` : `The code wouldn't even run.`,
+        `<span class="r">${esc(String(b.error).slice(0, 180))}</span><br>Refutation isn't only about wrong predictions — the harness feeds the error straight back.`);
+      V.innerHTML = `<div class="bigmark">❌</div>`;
+      break;
+    }
+    case "fail": {
+      setText("act iii — verification", "red",
+        `<span class="r">Refuted.</span> Reality disagreed with theory v${b.version}.`,
+        failSentence(b));
+      renderComparison(b.failure, V);
+      break;
+    }
+    case "fresh-fail": {
+      setText("act iv — the trap", "red",
+        `It explained <b>100%</b> of everything it had seen. So the harness dealt games it had <span class="r">never seen</span> — and reality said no.`,
+        failSentence(b) + `<br><span class="dimmer">This is the difference between fitting your data and understanding the world.</span>`);
+      renderComparison(b.failure, V);
+      break;
+    }
+    case "experiment": {
+      setText("act iv — the decisive experiment", "amber",
+        `It searched <span class="a">its own imagination</span> for a winning plan — then bet that plan against reality.`,
+        `Inside the learned game it explored <b>${fmtInt(b.states)}</b> states and found a <b>${b.len}-move</b> winning sequence. It had <b>never seen a win</b> — the win condition itself was a guess. Watch the plan run on the <b>real</b> game:`);
+      V.innerHTML = boardHTML("bp");
+      if (b.startObs) drawBoard($("bp"), b.startObs, { maxW: 420, maxH: 300 });
+      let k = 0;
+      anim = { iv: setInterval(() => {
+        if (k >= b.planSteps.length) {
+          clearInterval(anim.iv);
+          const last = b.planSteps[b.planSteps.length - 1];
+          const won = last && last.status === "solved";
+          $("bp-cap").innerHTML = won ? `<span style="color:var(--green)">🏆 move ${b.planSteps.length}/${b.len} — the real game is beaten</span>` : "";
+          return;
+        }
+        const s = b.planSteps[k];
+        drawBoard($("bp"), s.obs && s.status !== "solved" ? s.obs : (k > 0 ? b.planSteps[k - 1].obs : b.startObs), { maxW: 420, maxH: 300 });
+        $("bp-cap").innerHTML = `move ${k + 1}/${b.len} · ${actionLabel(s.action)} · prediction <span style="color:var(--green)">${s.match === false ? "✗" : "✓"}</span>`;
+        k++;
+      }, 240), raf: 0 };
+      break;
+    }
+    case "converged": {
+      const opt = b.planLen != null
+        ? `It beat the real game in <span class="g">${b.planLen} moves</span>${b.planLen === b.realOptimal ? " — <span class='g'>the true optimum</span>" : ""}, using a plan computed entirely inside its own reconstruction.`
+        : `The final theory survived every fresh game it had never seen.`;
+      setText("act v — converged", "green", `🏆 ${opt}`,
+        `${fmtInt(b.episodes)} games · ${fmtInt(b.totalSteps)} recorded actions · every single observation reproduced by the AI's code. Here is what it worked out, in its own words:`);
+      V.innerHTML = `<div id="discBox"><ul style="margin:0;padding:0">${(b.discoveries || []).map(d => `<li>${esc(d)}</li>`).join("")}</ul></div>`;
+      break;
+    }
+    case "outro": {
+      setText("epilogue", "",
+        `Now play the game <span class="g">it wrote</span>.`,
+        `The reconstruction below runs on the AI's learned rules — not the original's code.`);
+      const t = META.track, id = encodeURIComponent(runId);
+      const play = t === "famous" ? `play.html?run=${id}` : t === "famous2048" ? `play2048.html?run=${id}` : gbData.runFileUrl(runId, "clone.html");
+      V.innerHTML = `<div class="btnrow">
+        <a class="btn primary" href="${play}">▶ play the reconstruction</a>
+        <a class="btn" href="watch.html?run=${id}">the full replay — every event</a>
+        <a class="btn" href="index.html">all runs</a></div>`;
+      break;
+    }
+  }
+}
+
+function failSentence(b) {
+  const f = b.failure || {};
+  const where = b.epId ? `In episode ${esc(b.epId)}, ` : ``;
+  const after = f.action && f.action !== "initial" ? `after <b>${esc(actionLabel(f.action))}</b>, ` : "";
+  const cell = (f.diffs || []).find(d => d.x !== undefined);
+  const field = (f.diffs || []).find(d => d.field);
+  if (cell) return `${where}${after}the theory predicted the wrong board — the ringed cell is where reality and prediction split. The counterexample goes straight back into the next prompt.`;
+  if (field) return `${where}${after}reality's <b>${esc(field.field)}</b> was <span class="g">${esc(String(field.expected))}</span> — the theory computed <span class="r">${esc(String(field.got))}</span>.`;
+  return `${where}${after}the theory's prediction did not match reality.`;
+}
+
+function renderComparison(f, V) {
+  if (!f) return;
+  const cell = (f.diffs || []).filter(d => d.x !== undefined);
+  if (f.expectedGrid && f.gotGrid && String(f.expectedGrid) !== String(f.gotGrid)) {
+    V.innerHTML = `<div class="compare">
+      <div class="side"><span class="t real">reality</span>${boardHTML("cmpA")}</div>
+      <div class="side"><span class="t model">the theory's prediction</span>${boardHTML("cmpB")}</div>
+    </div><div class="fieldnote" id="fieldNote"></div>`;
+    const gA = drawBoard($("cmpA"), f.expectedGrid, { maxW: 340, maxH: 260 });
+    const gB = drawBoard($("cmpB"), f.gotGrid, { maxW: 340, maxH: 260 });
+    for (const [cv, geom] of [[$("cmpA"), gA], [$("cmpB"), gB]]) {
+      if (!geom) continue;
+      const ctx = cv.getContext("2d");
+      ctx.strokeStyle = "#f85149"; ctx.lineWidth = 3;
+      for (const d of cell) ctx.strokeRect(d.x * geom.cell + 1.5, d.y * geom.cell + 1.5, geom.cell - 3, geom.cell - 3);
+    }
+  } else {
+    V.innerHTML = `<div class="fieldnote" id="fieldNote"></div>`;
+  }
+  const fields = (f.diffs || []).filter(d => d.field);
+  if (fields.length) $("fieldNote").innerHTML = fields.map(d =>
+    `reality's <b>${esc(d.field)}</b>: <span class="g">${esc(String(d.expected))}</span> · the theory said <span class="r">${esc(String(d.got))}</span>`).join("  ·  ");
+}
+
+/* ---------- transport ---------- */
+function buildDots() {
+  $("dots").innerHTML = BEATS.map((b, i) => `<span class="dot" data-i="${i}" title="${b.kind}"></span>`).join("");
+  $("dots").addEventListener("click", ev => {
+    const d = ev.target.closest(".dot");
+    if (d) show(parseInt(d.dataset.i, 10));
+  });
+}
+function updateDots() {
+  [...$("dots").children].forEach((d, i) => {
+    d.className = "dot" + (i < cur ? " done" : i === cur ? " cur" : "");
+  });
+}
+const AUTO_MS = { title: 6000, probe: 7000, theory: 14000, pass: 6000, "fail-load": 9000, fail: 12000, "fresh-fail": 12000, experiment: 14000, converged: 16000, outro: 0 };
+function scheduleAuto(b) {
+  clearTimeout(autoTimer);
+  if (!$("auto").checked) return;
+  const ms = AUTO_MS[b.kind] ?? 8000;
+  if (ms && cur < BEATS.length - 1) autoTimer = setTimeout(() => show(cur + 1), ms);
+}
+function wire() {
+  $("nextBtn").addEventListener("click", () => show(cur + 1));
+  $("prevBtn").addEventListener("click", () => show(cur - 1));
+  $("auto").addEventListener("change", () => scheduleAuto(BEATS[cur]));
+  document.addEventListener("keydown", ev => {
+    if (ev.key === "ArrowRight" || ev.key === " ") { ev.preventDefault(); show(cur + 1); }
+    if (ev.key === "ArrowLeft") { ev.preventDefault(); show(cur - 1); }
+  });
+}
+</script>
+</body>
+</html>

@@ -56,6 +56,12 @@
   .card .links { display: flex; gap: 10px; margin-top: auto; padding-top: 8px; }
   .fail { color: var(--red); padding: 24px 0; }
   footer { margin-top: 64px; color: var(--faint); font-size: 11px; letter-spacing: 0.06em; }
+  .how { display: flex; gap: 14px; align-items: stretch; margin-top: 22px; flex-wrap: wrap; }
+  .how .arrow { align-self: center; color: var(--dimmer); font-size: 18px; }
+  .stepbox { flex: 1; min-width: 180px; border: 1px solid var(--border); background: var(--panel); padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .stepbox .n { color: var(--green); font-size: 11px; letter-spacing: .2em; }
+  .stepbox b { color: #e6edf3; font-size: 13px; }
+  .stepbox span:last-child { color: var(--dim); font-size: 11.5px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -64,17 +70,25 @@
     <span class="brand"><span class="logo"></span>GLASSBOX</span>
     <h1>It plays a game it's never seen, figures out the rules by experimenting,
         and hands you back the rules as <em>code</em> — verified against every observation.</h1>
-    <p class="sub">The agent is never told what it is playing — and some of these games were invented minutes before the run, so they exist in no training data. Every run below is an append-only
-       log of experiments, hypotheses, refutations and proofs — replay it, or play the game the AI rebuilt.</p>
+    <p class="sub">The agent is never told what it is playing — and some of these games were invented minutes before the run, so they exist in no training data.</p>
+    <div class="how">
+      <div class="stepbox"><span class="n">1</span><b>it plays blind</b><span>probing an unknown game, every observation logged</span></div>
+      <div class="arrow">→</div>
+      <div class="stepbox"><span class="n">2</span><b>it writes the rules as code</b><span>its beliefs are a program, not prose</span></div>
+      <div class="arrow">→</div>
+      <div class="stepbox"><span class="n">3</span><b>reality verifies</b><span>the code must reproduce every recorded frame — one wrong cell is a refutation</span></div>
+    </div>
   </header>
 
   <div class="runs-lbl"><span class="lbl">Recorded learning runs</span></div>
   <div id="cards" class="grid"><span class="dim">loading runs…</span></div>
 
-  <footer>glassbox · rules from observation · logs are append-only · the reconstructions are entirely AI-written — the harness and original environments are ordinary code</footer>
+  <footer><a href="submit.html" style="color:var(--green)">submit a game for the AI to learn →</a><br><br>glassbox · rules from observation · logs are append-only · the reconstructions are entirely AI-written — the harness and original environments are ordinary code</footer>
 </div>
 <div id="jserr"></div>
 
+<script src="insforge-config.js" onerror="void 0"></script>
+<script src="datasource.js"></script>
 <script src="gb.js"></script>
 <script>
 "use strict";
@@ -82,9 +96,7 @@
   const cards = document.getElementById("cards");
   let runs;
   try {
-    const r = await fetch("../runs/index.json", { cache: "no-store" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    runs = await r.json();
+    runs = await gbData.fetchRunIndex();
   } catch (e) {
     cards.innerHTML = `<div class="fail">could not load ../runs/index.json — ${esc(e.message)}.<br>
       serve the repository root (e.g. <span class="dim">python3 -m http.server</span> from the glassbox directory).</div>`;
@@ -113,7 +125,7 @@
         ? `<a class="btn" href="play.html?run=${id}">play the reconstruction</a>`
         : m.track === "famous2048"
           ? `<a class="btn" href="play2048.html?run=${id}">play the reconstruction</a>`
-          : `<a class="btn" href="../runs/${id}/clone.html" target="_blank">play the reconstruction</a>`;
+          : `<a class="btn" href="${esc(gbData.runFileUrl(m.id, "clone.html"))}" target="_blank">play the reconstruction</a>`;
     const planStat = m.planLen != null
       ? `<span class="stat"><span class="v green">${fmtInt(m.planLen)}</span> <span class="k">move plan${m.planLen === m.realOptimal ? " · true optimum" : ""}</span></span>`
       : "";
@@ -125,8 +137,7 @@
         <span class="spacer"></span>
         ${conv}
       </div>
-      <div class="metaline">game <b>${esc(m.game || "?")}</b> · model <b>${esc(m.model || "?")}</b>
-        · driver <b>${esc(m.driver || "?")}</b> · <b>${esc(String(m.id))}</b></div>
+      <div class="metaline">model <b>${esc(m.model || "?")}</b> · ${esc(String(m.id))}</div>
       <div class="stats">
         <span class="stat"><span class="v">${fmtInt(m.episodes)}</span> <span class="k">episodes</span></span>
         <span class="stat"><span class="v">${fmtInt(m.totalSteps)}</span> <span class="k">actions</span></span>
@@ -138,8 +149,9 @@
         : `<div class="more" style="padding-left:0">no discoveries recorded — run incomplete or still in progress</div>`}
       ${more > 0 ? `<div class="more">+ ${more} more discover${more === 1 ? "y" : "ies"} in the run</div>` : ""}
       <div class="links">
-        <a class="btn primary" href="watch.html?run=${id}">▶ watch it learn</a>
+        <a class="btn primary" href="story.html?run=${id}">▶ the story</a>
         ${playLink}
+        <a class="btn" href="watch.html?run=${id}" title="every event, scrubbable">full replay</a>
       </div>
     </div>`;
   }).join("");

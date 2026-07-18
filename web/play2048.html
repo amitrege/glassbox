@@ -70,6 +70,8 @@
   </div>
 </div>
 <div id="jserr"></div>
+<script src="insforge-config.js" onerror="void 0"></script>
+<script src="datasource.js"></script>
 <script src="gb.js"></script>
 <script>
 "use strict";
@@ -82,13 +84,8 @@ let model = null, grid = null, score = 0, rng = null, over = false;
   $("watchLink").href = `watch.html?run=${encodeURIComponent(runId)}`;
   let meta = {}, code = "";
   try {
-    const [mr, cr] = await Promise.all([
-      fetch(`../runs/${encodeURIComponent(runId)}/meta.json`, { cache: "no-store" }),
-      fetch(`../runs/${encodeURIComponent(runId)}/model_final.js`, { cache: "no-store" }),
-    ]);
-    if (!cr.ok) throw new Error(`model_final.js — HTTP ${cr.status}`);
-    code = await cr.text();
-    if (mr.ok) meta = await mr.json();
+    code = await gbData.fetchRunText(runId, "model_final.js");
+    try { meta = await gbData.fetchRunJson(runId, "meta.json"); } catch (e) { meta = {}; }
   } catch (e) { fail("could not load the learned model: " + e.message); return; }
   try {
     model = new Function(code + "\n;return model;")();

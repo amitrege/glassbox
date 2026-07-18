@@ -302,6 +302,8 @@
 
   <div id="jserr"></div>
 
+<script src="insforge-config.js" onerror="void 0"></script>
+<script src="datasource.js"></script>
 <script src="gb.js"></script>
 <script>
 "use strict";
@@ -320,7 +322,7 @@ const $ = id => document.getElementById(id);
   if (!runId) { fatal("no run specified — open this page as watch.html?run=<id>"); return; }
   let text;
   try {
-    const r = await fetch(`../runs/${encodeURIComponent(runId)}/events.jsonl`, { cache: "no-store" });
+    const r = { ok: true, text: async () => gbData.fetchRunText(runId, "events.jsonl") };
     if (!r.ok) throw new Error("HTTP " + r.status);
     text = await r.text();
   } catch (e) {
@@ -328,7 +330,7 @@ const $ = id => document.getElementById(id);
     return;
   }
   try {
-    const mr = await fetch(`../runs/${encodeURIComponent(runId)}/meta.json`, { cache: "no-store" });
+    const mr = { ok: true, json: async () => gbData.fetchRunJson(runId, "meta.json").catch(() => ({})) };
     if (mr.ok) META = (await mr.json()) || {};
   } catch (e) { /* meta is optional — the event log remains the source of truth */ }
   for (const line of text.split("\n")) {
