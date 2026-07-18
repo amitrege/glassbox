@@ -3,158 +3,250 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GLASSBOX — rules from observation</title>
+<title>GLASSBOX — an AI that learns games by writing their rules</title>
+<meta name="description" content="It plays a game it has never seen, figures out the rules by experimenting, and hands you back the rules as code — verified against every observation.">
+<meta property="og:title" content="GLASSBOX">
+<meta property="og:description" content="Watch an AI learn a game from scratch — and play the game it wrote.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="gb.css">
 <style>
-  body { overflow-y: auto; }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 48px 32px 80px; }
+  html { scroll-snap-type: y proximity; }
+  body { overflow-x: hidden; }
 
-  header.hero { margin-bottom: 44px; }
-  .hero .brand { font-size: 22px; letter-spacing: 0.42em; }
-  .hero .brand .logo { width: 15px; height: 15px; }
-  .hero h1 {
-    font-size: 21px;
-    font-weight: 500;
-    line-height: 1.55;
-    color: #e6edf3;
-    max-width: 860px;
-    margin: 22px 0 10px;
+  .brand-fixed {
+    position: fixed; top: 18px; left: 22px; z-index: 10;
+    display: flex; align-items: center; gap: 8px;
+    color: #e6edf3; font-size: 13px; letter-spacing: .32em; font-weight: 700;
+    text-decoration: none;
   }
-  .hero h1 em { font-style: normal; color: var(--green); }
-  .hero .sub { color: var(--dim); max-width: 760px; margin: 0; }
+  .brand-fixed .logo { width: 10px; height: 10px; background: var(--green); display: inline-block; }
 
-  .runs-lbl { margin: 40px 0 14px; display: flex; align-items: center; gap: 14px; }
-  .runs-lbl::after { content: ""; flex: 1; border-top: 1px solid var(--border-dim); }
+  section.moment {
+    min-height: 100svh;
+    scroll-snap-align: start;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 8vh 24px;
+    text-align: center;
+    position: relative;
+  }
+  .moment .line {
+    font-size: clamp(26px, 4.2vw, 44px);
+    line-height: 1.3; font-weight: 700; color: #e6edf3;
+    max-width: 850px;
+  }
+  .moment .line em { font-style: normal; color: var(--green); }
+  .moment .line .a { color: var(--amber); }
+  .moment .line .r { color: var(--red); }
+  .moment .quiet {
+    margin-top: 16px; color: var(--dim); font-size: clamp(13px, 1.4vw, 15px);
+    line-height: 1.7; max-width: 620px;
+  }
+  .moment .vis { margin-top: 40px; }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-    gap: 16px;
+  /* reveal on scroll — pure CSS scroll-driven animation; browsers without
+     support (or with reduced motion) simply see everything, always */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .rv { animation: rvIn both; animation-timeline: view(); animation-range: entry 8% entry 38%; }
+      .rv.d1 { animation-range: entry 16% entry 48%; }
+      .rv.d2 { animation-range: entry 24% entry 58%; }
+    }
   }
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    padding: 18px 20px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  @keyframes rvIn { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+
+  .cue {
+    position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+    color: var(--dimmer); font-size: 20px; cursor: pointer; user-select: none;
+    animation: bob 2.1s ease-in-out infinite;
   }
-  .card:hover { border-color: #3a4150; }
-  .card .top { display: flex; align-items: baseline; gap: 10px; }
-  .card h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.04em; color: #e6edf3; }
-  .card .top .spacer { flex: 1; }
-  .card .metaline { color: var(--dimmer); font-size: 11px; letter-spacing: 0.04em; }
-  .card .metaline b { color: var(--dim); font-weight: 500; }
-  .card .stats { display: flex; gap: 18px; border-top: 1px solid var(--border-dim); border-bottom: 1px solid var(--border-dim); padding: 8px 0; }
-  .card .stat .v { font-size: 15px; color: #e6edf3; }
-  .card .stat .k { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dimmer); }
-  .card ul.disc { font-size: 12px; }
-  .card ul.disc li { color: var(--dim); padding-top: 2px; padding-bottom: 2px; }
-  .card .more { color: var(--faint); font-size: 11px; padding-left: 22px; }
-  .card .links { display: flex; gap: 10px; margin-top: auto; padding-top: 8px; }
-  .fail { color: var(--red); padding: 24px 0; }
-  footer { margin-top: 64px; color: var(--faint); font-size: 11px; letter-spacing: 0.06em; }
-  .how { display: flex; gap: 14px; align-items: stretch; margin-top: 22px; flex-wrap: wrap; }
-  .how .arrow { align-self: center; color: var(--dimmer); font-size: 18px; }
-  .stepbox { flex: 1; min-width: 180px; border: 1px solid var(--border); background: var(--panel); padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; }
-  .stepbox .n { color: var(--green); font-size: 11px; letter-spacing: .2em; }
-  .stepbox b { color: #e6edf3; font-size: 13px; }
-  .stepbox span:last-child { color: var(--dim); font-size: 11.5px; line-height: 1.5; }
+  @keyframes bob { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 7px); } }
+  @media (prefers-reduced-motion: reduce) { .cue { animation: none; } }
+
+  /* moment 2 — code */
+  .codecard {
+    text-align: left; background: var(--panel); border: 1px solid var(--border);
+    padding: 16px 22px; font-size: 13px; line-height: 1.75; white-space: pre;
+    overflow-x: auto; max-width: min(92vw, 620px); min-height: 220px;
+  }
+  .codecard .kw { color: #6b9fd6; } .codecard .str { color: #a3853a; } .codecard .cm { color: #4b5361; font-style: italic; }
+
+  /* moment 3 — refutation pair */
+  .pair { display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; }
+  .pair .side { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .pair .t { font-size: 10px; letter-spacing: .24em; text-transform: uppercase; }
+  .pair .t.real { color: var(--green); } .pair .t.pred { color: var(--red); }
+
+  /* moment 4 — chooser */
+  #choose .line { margin-bottom: 6vh; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 340px)); gap: 16px; justify-content: center; width: 100%; max-width: 1100px; }
+  a.tile {
+    display: flex; flex-direction: column; gap: 8px; text-align: left;
+    border: 1px solid var(--border); background: var(--panel);
+    padding: 20px 22px 18px; text-decoration: none;
+    transition: border-color .18s ease, transform .18s ease, background .18s ease;
+  }
+  a.tile:hover { border-color: var(--green); transform: translateY(-3px); background: #10141b; }
+  a.tile .t { color: #e6edf3; font-size: 16px; font-weight: 700; }
+  a.tile .hook { color: var(--dim); font-size: 12.5px; line-height: 1.6; }
+  a.tile .go { margin-top: 6px; color: var(--green); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; opacity: 0; transition: opacity .18s ease; }
+  a.tile:hover .go { opacity: 1; }
+  @media (hover: none) { a.tile .go { opacity: 1; } }
+
+  .endnote { margin-top: 7vh; color: var(--faint); font-size: 11.5px; line-height: 2; }
+  .endnote a { color: var(--dim); }
+  .endnote a.subm { color: var(--green); }
+  .fail { color: var(--red); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="hero">
-    <span class="brand"><span class="logo"></span>GLASSBOX</span>
-    <h1>It plays a game it's never seen, figures out the rules by experimenting,
-        and hands you back the rules as <em>code</em> — verified against every observation.</h1>
-    <p class="sub">The agent is never told what it is playing — and some of these games were invented minutes before the run, so they exist in no training data.</p>
-    <div class="how">
-      <div class="stepbox"><span class="n">1</span><b>it plays blind</b><span>probing an unknown game, every observation logged</span></div>
-      <div class="arrow">→</div>
-      <div class="stepbox"><span class="n">2</span><b>it writes the rules as code</b><span>its beliefs are a program, not prose</span></div>
-      <div class="arrow">→</div>
-      <div class="stepbox"><span class="n">3</span><b>reality verifies</b><span>the code must reproduce every recorded frame — one wrong cell is a refutation</span></div>
+<a class="brand-fixed" href="#top"><span class="logo"></span>GLASSBOX</a>
+
+<section class="moment" id="top">
+  <div class="line rv">An AI is dropped into a game<br>it has <em>never seen</em>.</div>
+  <div class="vis rv d1"><span class="boardframe"><canvas id="probeBoard"></canvas></span></div>
+  <div class="quiet rv d2" id="probeCap">no name · no goal · no idea what any symbol means</div>
+  <div class="cue" data-next="m2">▾</div>
+</section>
+
+<section class="moment" id="m2">
+  <div class="line rv">It works the rules out —<br>and writes them <span class="a">as code</span>.</div>
+  <div class="vis rv d1"><div class="codecard" id="codeCard"></div></div>
+  <div class="quiet rv d2">beliefs written as code can't be vague</div>
+  <div class="cue" data-next="m3">▾</div>
+</section>
+
+<section class="moment" id="m3">
+  <div class="line rv">Reality checks every line.<br>One wrong cell — <span class="r">the theory dies</span>.</div>
+  <div class="vis rv d1">
+    <div class="pair">
+      <div class="side"><span class="t real">reality</span><span class="boardframe"><canvas id="cmpA"></canvas></span></div>
+      <div class="side"><span class="t pred">its prediction</span><span class="boardframe"><canvas id="cmpB"></canvas></span></div>
     </div>
-  </header>
+  </div>
+  <div class="quiet rv d2">refuted theories get repaired — until nothing reality deals can break them</div>
+  <div class="cue" data-next="choose">▾</div>
+</section>
 
-  <div class="runs-lbl"><span class="lbl">Recorded learning runs</span></div>
-  <div id="cards" class="grid"><span class="dim">loading runs…</span></div>
+<section class="moment" id="choose">
+  <div class="line rv">Five games, learned from scratch.<br>Pick one.</div>
+  <div class="tiles rv d1" id="tiles"></div>
+  <div class="endnote rv d2">
+    <a class="subm" href="submit.html">or give it a game it has never seen →</a><br>
+    <span>every story is an append-only record — nothing is staged · reconstructions are entirely AI-written</span>
+  </div>
+</section>
 
-  <footer><a href="submit.html" style="color:var(--green)">submit a game for the AI to learn →</a><br><br>glassbox · rules from observation · logs are append-only · the reconstructions are entirely AI-written — the harness and original environments are ordinary code</footer>
-</div>
 <div id="jserr"></div>
-
 <script src="insforge-config.js" onerror="void 0"></script>
 <script src="datasource.js"></script>
 <script src="gb.js"></script>
 <script>
 "use strict";
-(async function () {
-  const cards = document.getElementById("cards");
-  let runs;
+
+/* ---- scroll cues ---- */
+document.querySelectorAll(".cue").forEach(c =>
+  c.addEventListener("click", () => document.getElementById(c.dataset.next)?.scrollIntoView({ behavior: "smooth" })));
+
+/* ---- moment 1: a real probe, animating (from the twisted run), with fallback ---- */
+const FALLBACK_FRAMES = ["####/####/####/####", "####/#2##/####/####", "####/#2##/##4#/####", "#*##/#2##/##4#/#!##"];
+(async function probe() {
+  const cv = document.getElementById("probeBoard");
+  let frames = FALLBACK_FRAMES, cap = null;
   try {
-    runs = await gbData.fetchRunIndex();
+    const idx = await gbData.fetchRunIndex();
+    const run = idx.find(m => m.game === "minesweeper_twisted") || idx[0];
+    const txt = await gbData.fetchRunText(run.id, "events.jsonl");
+    const evs = txt.split("\n").filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } });
+    const steps = evs.filter(e => e && e.type === "step" && e.obs && !String(e.obs).includes("|") && !String(e.obs).includes(",")).slice(0, 60);
+    if (steps.length > 5) {
+      frames = steps.map(s => s.obs);
+      cap = steps.map(s => `${s.ep} · ${actionLabel(s.action)}`);
+    }
+  } catch (e) { /* fallback frames */ }
+  let k = 0;
+  const draw = () => {
+    drawBoard(cv, frames[k % frames.length], { maxW: Math.min(330, innerWidth - 80), maxH: 240 });
+    if (cap) document.getElementById("probeCap").textContent = "watching it probe: " + cap[k % cap.length];
+    k++;
+  };
+  draw();
+  setInterval(draw, 700);
+})();
+
+/* ---- moment 2: real learned code, typed in on reveal ---- */
+const CODE_LINES = [
+  '<span class="cm">// from a model the AI wrote — theory v3</span>',
+  '<span class="kw">const</span> KNIGHT = [[-2,-1],[-2,1],[-1,-2],[-1,2],',
+  '                [1,-2],[1,2],[2,-1],[2,1]];',
+  '<span class="cm">// digits count mines a knight\'s move away —</span>',
+  '<span class="cm">// wrapping around the edges like a torus</span>',
+  '<span class="kw">function</span> digit(g, x, y) {',
+  '  <span class="kw">return</span> KNIGHT.filter(([dx,dy]) =>',
+  '    mineAt((x+dx+W)%W, (y+dy+H)%H)).length;',
+  '}',
+];
+(function typeCode() {
+  const el = document.getElementById("codeCard");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) { el.innerHTML = CODE_LINES.join("\n"); return; }
+  let shown = 0, started = false;
+  const tick = () => {
+    if (shown <= CODE_LINES.length) {
+      el.innerHTML = CODE_LINES.slice(0, shown).join("\n") + (shown < CODE_LINES.length ? '<span style="color:var(--green)">▍</span>' : "");
+      shown++;
+      setTimeout(tick, 220);
+    }
+  };
+  new IntersectionObserver((es, ob) => {
+    if (es.some(e => e.isIntersecting) && !started) { started = true; tick(); ob.disconnect(); }
+  }, { threshold: 0.4 }).observe(el);
+  el.innerHTML = "&nbsp;";
+})();
+
+/* ---- moment 3: a reality-vs-prediction refutation (authentic shape from the twisted run) ---- */
+(function refute() {
+  // reality revealed a '2' at the ringed cell where the theory predicted the flag would survive
+  const A = "234432/2*4*32/234432/123321/1F2221/112211";
+  const B = "234432/2*4*32/234432/123321/1F2F21/112211";
+  const opts = { maxW: Math.min(240, innerWidth / 2 - 50), maxH: 200 };
+  const gA = drawBoard(document.getElementById("cmpA"), A, opts);
+  const gB = drawBoard(document.getElementById("cmpB"), B, opts);
+  for (const [cv, g] of [[document.getElementById("cmpA"), gA], [document.getElementById("cmpB"), gB]]) {
+    if (!g) continue;
+    const ctx = cv.getContext("2d");
+    ctx.strokeStyle = "#f85149"; ctx.lineWidth = 3;
+    ctx.strokeRect(3 * g.cell + 1.5, 4 * g.cell + 1.5, g.cell - 3, g.cell - 3);
+  }
+})();
+
+/* ---- moment 4: the chooser ---- */
+const HOOKS = {
+  minesweeper_twisted: { t: "Definitely Not Minesweeper", hook: "invented hours before the run — no training data can help. Watch it get fooled, refuted, and recover." },
+  sokoban_basic: { t: "Sokoban", hook: "it never saw a win — so it guessed the goal, planned inside its own model, and beat the real game. Optimally." },
+  minesweeper_knight: { t: "Minesweeper… or is it?", hook: "looks exactly like Minesweeper. The numbers count something else entirely." },
+  minesweeper: { t: "Minesweeper", hook: "the control: a game everyone knows, reverse-engineered blind in one pass." },
+  game2048: { t: "2048", hook: "slide, merge, score, spawn odds — every rule recovered, then handed back playable." },
+};
+const ORDER = ["minesweeper_twisted", "sokoban_basic", "minesweeper_knight", "minesweeper", "game2048"];
+(async function tiles() {
+  const box = document.getElementById("tiles");
+  try {
+    const idx = await gbData.fetchRunIndex();
+    const byGame = {};
+    for (const m of idx) if (m.converged && !byGame[m.game]) byGame[m.game] = m;
+    const known = ORDER.filter(g => byGame[g]).map(g => ({ m: byGame[g], h: HOOKS[g] }));
+    const extra = idx.filter(m => m.converged && !HOOKS[m.game]).map(m => ({ m, h: { t: m.title || m.game, hook: (m.discoveries && m.discoveries[0]) || "a recorded learning run" } }));
+    const all = known.concat(extra);
+    if (!all.length) throw new Error("no converged runs");
+    box.innerHTML = all.map(({ m, h }) =>
+      `<a class="tile" href="story.html?run=${encodeURIComponent(m.id)}">
+         <span class="t">${esc(h.t)}</span>
+         <span class="hook">${esc(h.hook)}</span>
+         <span class="go">▶ watch the story</span>
+       </a>`).join("");
   } catch (e) {
-    cards.innerHTML = `<div class="fail">could not load ../runs/index.json — ${esc(e.message)}.<br>
-      serve the repository root (e.g. <span class="dim">python3 -m http.server</span> from the glassbox directory).</div>`;
-    return;
+    box.innerHTML = `<div class="fail">could not load runs — ${esc(e.message)}</div>`;
   }
-  if (!Array.isArray(runs) || runs.length === 0) {
-    cards.innerHTML = `<div class="dim">no runs recorded yet.</div>`;
-    return;
-  }
-
-  runs.sort((a, b) => String(b.startedAt || b.id).localeCompare(String(a.startedAt || a.id)));
-
-  cards.innerHTML = runs.map(m => {
-    const id = encodeURIComponent(m.id);
-    const disc = Array.isArray(m.discoveries) ? m.discoveries : [];
-    const shown = disc.slice(0, 3);
-    const more = disc.length - shown.length;
-    const conv = m.converged
-      ? `<span class="chip green">converged</span>`
-      : !m.finishedAt
-        ? `<span class="chip amber">in progress</span>`
-        : `<span class="chip dim">did not converge</span>`;
-    // only offer the reconstruction once the run has actually converged
-    const playLink = m.converged !== true ? ""
-      : m.track === "famous"
-        ? `<a class="btn" href="play.html?run=${id}">play the reconstruction</a>`
-        : m.track === "famous2048"
-          ? `<a class="btn" href="play2048.html?run=${id}">play the reconstruction</a>`
-          : `<a class="btn" href="${esc(gbData.runFileUrl(m.id, "clone.html"))}" target="_blank">play the reconstruction</a>`;
-    const planStat = m.planLen != null
-      ? `<span class="stat"><span class="v green">${fmtInt(m.planLen)}</span> <span class="k">move plan${m.planLen === m.realOptimal ? " · true optimum" : ""}</span></span>`
-      : "";
-    return `
-    <div class="card">
-      <div class="top">
-        <h3>${esc(m.title || m.game || m.id)}</h3>
-        <span class="chip dim">${esc(m.track || "?")}</span>
-        <span class="spacer"></span>
-        ${conv}
-      </div>
-      <div class="metaline">model <b>${esc(m.model || "?")}</b> · ${esc(String(m.id))}</div>
-      <div class="stats">
-        <span class="stat"><span class="v">${fmtInt(m.episodes)}</span> <span class="k">episodes</span></span>
-        <span class="stat"><span class="v">${fmtInt(m.totalSteps)}</span> <span class="k">actions</span></span>
-        <span class="stat"><span class="v">${fmtInt(m.versions)}</span> <span class="k">model version${m.versions === 1 ? "" : "s"}</span></span>
-        ${planStat}
-      </div>
-      ${shown.length
-        ? `<ul class="disc">${shown.map(d => `<li>${esc(d)}</li>`).join("")}</ul>`
-        : `<div class="more" style="padding-left:0">no discoveries recorded — run incomplete or still in progress</div>`}
-      ${more > 0 ? `<div class="more">+ ${more} more discover${more === 1 ? "y" : "ies"} in the run</div>` : ""}
-      <div class="links">
-        <a class="btn primary" href="story.html?run=${id}">▶ the story</a>
-        ${playLink}
-        <a class="btn" href="watch.html?run=${id}" title="every event, scrubbable">full replay</a>
-      </div>
-    </div>`;
-  }).join("");
 })();
 </script>
 </body>
