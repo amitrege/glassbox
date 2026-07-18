@@ -87,12 +87,12 @@ function settle(label, r, existsCodes = ["ALREADY_EXISTS", "DUPLICATE", "EXISTS"
 const RUNS_TABLE = {
   tableName: "runs",
   columns: [
-    { name: "run_id",    type: "string",  nullable: false, unique: true },
-    { name: "title",     type: "string",  nullable: true },
-    { name: "game",      type: "string",  nullable: true },
-    { name: "track",     type: "string",  nullable: true },
-    { name: "converged", type: "boolean", nullable: true },
-    { name: "meta",      type: "json",    nullable: true }
+    { columnName: "run_id",    type: "string",  isNullable: false, isUnique: true },
+    { columnName: "title",     type: "string",  isNullable: true,  isUnique: false },
+    { columnName: "game",      type: "string",  isNullable: true,  isUnique: false },
+    { columnName: "track",     type: "string",  isNullable: true,  isUnique: false },
+    { columnName: "converged", type: "boolean", isNullable: true,  isUnique: false },
+    { columnName: "meta",      type: "json",    isNullable: true,  isUnique: false }
   ],
   rlsEnabled: false
 };
@@ -100,9 +100,9 @@ const RUNS_TABLE = {
 const SUBMISSIONS_TABLE = {
   tableName: "submissions",
   columns: [
-    { name: "name",    type: "string", nullable: true },   // optional submitter name
-    { name: "kind",    type: "string", nullable: false },  // "puzzlescript" | "rule-mutation"
-    { name: "content", type: "string", nullable: false }   // the source / idea text
+    { columnName: "name",    type: "string", isNullable: true,  isUnique: false },  // optional submitter name
+    { columnName: "kind",    type: "string", isNullable: false, isUnique: false }, // "puzzlescript" | "rule-mutation"
+    { columnName: "content", type: "string", isNullable: false, isUnique: false }  // the source / idea text
   ],
   rlsEnabled: false
 };

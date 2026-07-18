@@ -128,8 +128,10 @@ Rule mutation: name the base game and the twist, e.g.
 (function () {
   var cfg = (typeof window.INSFORGE === "object" && window.INSFORGE &&
              typeof window.INSFORGE.baseUrl === "string" &&
-             window.INSFORGE.baseUrl.indexOf("YOUR-APP") === -1)
-    ? window.INSFORGE : null;
+             window.INSFORGE.baseUrl.indexOf("YOUR-APP") === -1 &&
+             typeof window.INSFORGE.anonKey === "string" &&
+             window.INSFORGE.anonKey.length > 0)
+    ? window.INSFORGE : null;   // writes need the anon key; reads elsewhere work without it
 
   var form = document.getElementById("f");
   var status = document.getElementById("status");

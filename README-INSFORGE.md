@@ -67,3 +67,11 @@ For judges: *the site is static and works from flat files; plug in InsForge keys
 the same pages read runs from a hosted Postgres + object store, and visitors can queue
 new games for the agent to learn — the backend is optional, inspectable, and never
 executes submissions automatically.*
+
+## Live-cloud verification (2026-07-18, project yc3jrefa)
+
+- Provisioned against the real cloud: the live API wants `columnName`/`isNullable`/`isUnique` in column specs (the scripts are updated; older docs showed `name`/`nullable`/`unique`).
+- `runs` table (5 rows) + `glassbox-runs` public bucket (17 artifact files + index.json mirror) synced and verified.
+- **Keyless browser reads work**: public-bucket GETs 302-redirect to signed URLs that browsers follow with CORS intact. `web/insforge-config.js` therefore ships with `anonKey: ""` — the site reads everything from InsForge with **no secret in the client** (table reads 401 without a key; the datasource's public-storage fallback covers the index).
+- The admin API key (`ik_…`, in `.env.insforge`, gitignored) is used ONLY by the Node scripts. Never put it in `web/insforge-config.js`.
+- `submit.html` requires a non-empty `anonKey` to enable the form (writes are 401 without auth). If the dashboard exposes an anon/publishable key, add it to `web/insforge-config.js` to switch submissions on; everything else already works without it.
