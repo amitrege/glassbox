@@ -22,6 +22,9 @@
  * This file must never throw at load time when unconfigured.
  */
 "use strict";
+// treat an unedited config template as unconfigured
+if (typeof window !== "undefined" && window.INSFORGE && /YOUR-APP|YOUR_PROJECT|example\.insforge/i.test(String(window.INSFORGE.baseUrl || ""))) { window.INSFORGE = undefined; }
+
 
 (function () {
   var cfg = null;

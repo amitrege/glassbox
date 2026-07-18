@@ -45,6 +45,14 @@
   .fieldnote { margin-top:14px; font-size:14px; color:#e6edf3; }
   .fieldnote .r { color:var(--red); } .fieldnote .g { color:var(--green); }
 
+  /* theory beat: beliefs first, code demoted */
+  #beliefBox { text-align:left; max-width:760px; border:1px solid rgba(210,153,34,.5); background:rgba(210,153,34,.05); padding:14px 22px; }
+  #beliefBox li { color:var(--text); font-size:14px; line-height:1.8; margin:5px 0; list-style:none; }
+  #beliefBox li::before { content:"◆  "; color:var(--amber); }
+  #codeDet { margin-top:14px; max-width:min(920px,90vw); border:1px solid var(--border); background:var(--panel); }
+  #codeDet summary { cursor:pointer; padding:9px 16px; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); user-select:none; text-align:left; }
+  #codeDet[open] summary { border-bottom:1px solid var(--border-dim); color:var(--amber); }
+
   /* discoveries beat */
   #discBox { text-align:left; max-width:820px; max-height:46vh; overflow:auto; border:1px solid rgba(63,185,80,.5); background:rgba(63,185,80,.05); padding:16px 22px; }
   #discBox li { color:var(--text); font-size:13px; line-height:1.75; margin:6px 0; list-style:none; }
@@ -146,6 +154,8 @@ function extractBeats(events, meta) {
       beats.push({ kind: "theory", version: e.version, narration: e.narration, code: e.code, prevCode: lastCode, isPS });
       lastCode = e.code;
     } else if (e.type === "verify") {
+      const tb = beats.filter(x => x.kind === "theory" && x.version === e.version).pop();
+      if (tb && Array.isArray(e.discoveries)) tb.beliefs = e.discoveries.slice(0, 3);
       if (e.ok) beats.push({ kind: "pass", version: e.version, passed: e.passed, total: (e.passed || 0) + (e.failed || 0) });
       else if (e.loadError) beats.push({ kind: "fail-load", version: e.version, error: e.loadError, isPS });
       else beats.push({ kind: "fail", version: e.version, failure: e.firstFailure, passed: e.passed, total: (e.passed || 0) + (e.failed || 0), epId: (e.episodes || []).find(x => !x.ok)?.id });
@@ -160,6 +170,10 @@ function extractBeats(events, meta) {
     }
   }
   beats.push({ kind: "outro" });
+  // a pass beat only teases "the easy part…" if a trap/experiment actually follows
+  beats.forEach((b, i) => {
+    if (b.kind === "pass") b.tease = beats.slice(i + 1).some(x => ["fresh-fail", "fail", "experiment"].includes(x.kind));
+  });
   return beats;
 }
 
@@ -183,8 +197,9 @@ function show(n) {
   const b = BEATS[cur];
   const V = $("visual"); V.innerHTML = "";
   $("beatNo").textContent = `${cur + 1} / ${BEATS.length}`;
+  try { const u = new URL(location); u.searchParams.set("beat", String(cur)); history.replaceState(null, "", u); } catch (e) {}
   $("prevBtn").disabled = cur === 0;
-  $("nextBtn").textContent = cur === BEATS.length - 1 ? "done" : "next →";
+  $("nextBtn").textContent = cur === BEATS.length - 1 ? "↺ all runs" : "next →";
   $("nextBtn").classList.toggle("pulse", cur === 0);
   renderBeat(b, V);
   updateDots();
@@ -195,9 +210,12 @@ function renderBeat(b, V) {
   const game = META.title || META.game || "this game";
   switch (b.kind) {
     case "title": {
+      const blind = META.track === "ps"
+        ? `It could see the board's object names — the way any player sees sprites — but it was never told the rules, the goal, or what any object does. What follows is the append-only record of how it worked the rules out — and proved them.`
+        : `It was never told the name, the goal, or what any symbol means. What follows is the append-only record of how it worked the rules out — and proved them.`;
       setText("a recorded learning run", "",
-        `An AI was dropped into <span class="a">${esc(game)}</span> with no idea what it was.`,
-        `It was never told the name, the goal, or what any symbol means. What follows is the append-only record of how it worked the rules out — and proved them.`);
+        `An AI was dropped into <span class="a">${esc(game)}</span> with no idea how it worked.`,
+        blind);
       V.innerHTML = boardHTML("b0");
       if (b.obs) drawBoard($("b0"), b.obs, { maxW: 420, maxH: 300 });
       $("b0-cap") && ($("b0-cap").textContent = "the first thing it ever saw");
@@ -228,15 +246,27 @@ function renderBeat(b, V) {
               : `Theory <span class="a">v${b.version}</span> — revised under refutation.`,
         `<b>In its own words:</b> ${esc(b.narration || "")}${first ? `<br><span class="dimmer">Beliefs written as code can't be vague — every rule below either reproduces reality or gets refuted.</span>` : ""}`);
       const prevLines = new Set((b.prevCode || "").split("\n"));
-      const lines = String(b.code || "").split("\n").map(l =>
-        `<div class="cl${b.prevCode && !prevLines.has(l) && l.trim() ? " added" : ""}">${highlightLine(l)}</div>`).join("");
-      V.innerHTML = `<div id="codeBox"><pre>${lines}</pre></div><div class="cap">${b.prevCode ? "green lines are what changed" : (b.isPS ? "a complete PuzzleScript program" : "a complete executable model")} · scroll to read</div>`;
+      const rawLines = String(b.code || "").split("\n");
+      let changed = 0;
+      const lines = rawLines.map(l => {
+        const isNew = b.prevCode && !prevLines.has(l) && l.trim();
+        if (isNew) changed++;
+        return `<div class="cl${isNew ? " added" : ""}">${highlightLine(l)}</div>`;
+      }).join("");
+      const beliefs = (b.beliefs || []).length
+        ? `<div id="beliefBox"><ul style="margin:0;padding:0">${b.beliefs.map(d => `<li>${esc(d)}</li>`).join("")}</ul></div>`
+        : "";
+      V.innerHTML = `${beliefs}
+        <details id="codeDet"${b.beliefs?.length ? "" : " open"}>
+          <summary>the actual code — ${rawLines.length} lines${b.prevCode ? ` · ${changed} changed (green)` : ""} · ${b.isPS ? "PuzzleScript" : "JavaScript"}</summary>
+          <div id="codeBox" style="border:none;max-width:none"><pre>${lines}</pre></div>
+        </details>`;
       break;
     }
     case "pass": {
       setText("act iii — verification", "green",
         `The verifier replayed every recorded game through the code. <span class="g">${b.passed}/${b.total} exact.</span>`,
-        `Every grid, every counter, every win and loss — reproduced cell-for-cell. But fitting what you've seen is the easy part…`);
+        `Every grid, every counter, every win and loss — reproduced cell-for-cell.${b.tease ? " But fitting what you've seen is the easy part…" : " And it held."}`);
       V.innerHTML = `<div class="bigmark">✅</div>`;
       break;
     }
@@ -277,8 +307,11 @@ function renderBeat(b, V) {
           return;
         }
         const s = b.planSteps[k];
-        drawBoard($("bp"), s.obs && s.status !== "solved" ? s.obs : (k > 0 ? b.planSteps[k - 1].obs : b.startObs), { maxW: 420, maxH: 300 });
-        $("bp-cap").innerHTML = `move ${k + 1}/${b.len} · ${actionLabel(s.action)} · prediction <span style="color:var(--green)">${s.match === false ? "✗" : "✓"}</span>`;
+        const frame = s.status === "solved" ? (s.predictedObs || s.obs) : s.obs;
+        drawBoard($("bp"), frame || (k > 0 ? b.planSteps[k - 1].obs : b.startObs), { maxW: 420, maxH: 300 });
+        $("bp-cap").innerHTML = s.status === "solved"
+          ? `<span style="color:var(--green)">🏆 move ${k + 1}/${b.len} — the winning push, exactly as its model predicted</span>`
+          : `move ${k + 1}/${b.len} · ${actionLabel(s.action)} · prediction <span style="color:var(--green)">${s.match === false ? "✗" : "✓"}</span>`;
         k++;
       }, 240), raf: 0 };
       break;
@@ -288,8 +321,9 @@ function renderBeat(b, V) {
         ? `It beat the real game in <span class="g">${b.planLen} moves</span>${b.planLen === b.realOptimal ? " — <span class='g'>the true optimum</span>" : ""}, using a plan computed entirely inside its own reconstruction.`
         : `The final theory survived every fresh game it had never seen.`;
       setText("act v — converged", "green", `🏆 ${opt}`,
-        `${fmtInt(b.episodes)} games · ${fmtInt(b.totalSteps)} recorded actions · every single observation reproduced by the AI's code. Here is what it worked out, in its own words:`);
-      V.innerHTML = `<div id="discBox"><ul style="margin:0;padding:0">${(b.discoveries || []).map(d => `<li>${esc(d)}</li>`).join("")}</ul></div>`;
+        `${fmtInt(b.episodes)} games · ${fmtInt(b.totalSteps)} recorded actions · every in-scope observation reproduced by the AI's code. Here is what it worked out, in its own words:`);
+      const dn = (b.discoveries || []).length;
+      V.innerHTML = `<div id="discBox"><ul style="margin:0;padding:0">${(b.discoveries || []).map(d => `<li>${esc(d)}</li>`).join("")}</ul></div>${dn > 6 ? `<div class="cap">${dn} discoveries · scroll the list</div>` : ""}`;
       break;
     }
     case "outro": {
@@ -363,7 +397,10 @@ function scheduleAuto(b) {
   if (ms && cur < BEATS.length - 1) autoTimer = setTimeout(() => show(cur + 1), ms);
 }
 function wire() {
-  $("nextBtn").addEventListener("click", () => show(cur + 1));
+  $("nextBtn").addEventListener("click", () => {
+    if (cur === BEATS.length - 1) location.href = "index.html";
+    else show(cur + 1);
+  });
   $("prevBtn").addEventListener("click", () => show(cur - 1));
   $("auto").addEventListener("change", () => scheduleAuto(BEATS[cur]));
   document.addEventListener("keydown", ev => {

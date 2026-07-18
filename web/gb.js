@@ -62,6 +62,9 @@ function parseObs(obs) {
     };
   }
   const raw = String(obs).split("/");
+  if (raw.length && raw.every(r => /^\d+(,\d+)*$/.test(r))) {
+    return { rows: raw.map(r => r.split(",")), mode: "num" };
+  }
   const tokenMode = raw.some(r => r.includes("|") || (r.length > 1 && !CHAR_ALPHABET.test(r)));
   return {
     rows: raw.map(r => tokenMode ? r.split("|") : r.split("")),
@@ -181,6 +184,23 @@ function drawCharCell(ctx, px, py, s, ch) {
   ctx.fillText(String(ch).slice(0, 1), cx, cy);
 }
 
+const NUM_SHADES = ["#171b22","#20262f","#28303c","#5b4623","#6d4f22","#7d4a28","#8a3f2a","#7a6a2c","#8a7a26","#96812b","#a08a2f","#a8922f"];
+function drawNumCell(ctx, px, py, s, val) {
+  const v = Number(val) || 0;
+  const shade = v === 0 ? NUM_SHADES[0] : NUM_SHADES[Math.min(NUM_SHADES.length - 1, Math.round(Math.log2(v)))];
+  ctx.fillStyle = shade;
+  ctx.fillRect(px, py, s, s);
+  ctx.strokeStyle = "#232833"; ctx.lineWidth = 1;
+  ctx.strokeRect(px + 0.5, py + 0.5, s - 1, s - 1);
+  if (v !== 0) {
+    ctx.fillStyle = "#e6edf3";
+    const fs = String(v).length >= 4 ? 0.30 : String(v).length === 3 ? 0.36 : 0.44;
+    ctx.font = `700 ${Math.round(s * fs)}px ui-monospace, Menlo, monospace`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(String(v), px + s / 2, py + s / 2 + 1);
+  }
+}
+
 function drawTokenCell(ctx, px, py, s, tok) {
   const t = String(tok);
   if (t === "" || t === "." || t.toLowerCase() === "background" || t.toLowerCase() === "empty") {
@@ -234,6 +254,7 @@ function drawBoard(canvas, obs, opts = {}) {
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < rows[y].length; x++) {
       if (parsed.mode === "char") drawCharCell(ctx, x * cell, y * cell, cell, rows[y][x]);
+      else if (parsed.mode === "num") drawNumCell(ctx, x * cell, y * cell, cell, rows[y][x]);
       else drawTokenCell(ctx, x * cell, y * cell, cell, rows[y][x]);
     }
   }
