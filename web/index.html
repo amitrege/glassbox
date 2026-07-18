@@ -71,7 +71,7 @@
   <div class="runs-lbl"><span class="lbl">Recorded learning runs</span></div>
   <div id="cards" class="grid"><span class="dim">loading runs…</span></div>
 
-  <footer>glassbox · rules from observation · logs are append-only · nothing here is hand-written game code</footer>
+  <footer>glassbox · rules from observation · logs are append-only · the reconstructions are entirely AI-written — the harness and original environments are ordinary code</footer>
 </div>
 <div id="jserr"></div>
 
@@ -104,10 +104,17 @@
     const more = disc.length - shown.length;
     const conv = m.converged
       ? `<span class="chip green">converged</span>`
-      : `<span class="chip dim">did not converge</span>`;
-    const playLink = m.track === "famous"
-      ? `<a class="btn" href="play.html?run=${id}">play the reconstruction</a>`
-      : `<a class="btn" href="../runs/${id}/clone.html" target="_blank">play the reconstruction</a>`;
+      : !m.finishedAt
+        ? `<span class="chip amber">in progress</span>`
+        : `<span class="chip dim">did not converge</span>`;
+    // only offer the reconstruction once the run has actually converged
+    const playLink = m.converged !== true ? ""
+      : m.track === "famous"
+        ? `<a class="btn" href="play.html?run=${id}">play the reconstruction</a>`
+        : `<a class="btn" href="../runs/${id}/clone.html" target="_blank">play the reconstruction</a>`;
+    const planStat = m.planLen != null
+      ? `<span class="stat"><span class="v green">${fmtInt(m.planLen)}</span> <span class="k">move plan${m.planLen === m.realOptimal ? " · true optimum" : ""}</span></span>`
+      : "";
     return `
     <div class="card">
       <div class="top">
@@ -122,6 +129,7 @@
         <span class="stat"><span class="v">${fmtInt(m.episodes)}</span> <span class="k">episodes</span></span>
         <span class="stat"><span class="v">${fmtInt(m.totalSteps)}</span> <span class="k">actions</span></span>
         <span class="stat"><span class="v">${fmtInt(m.versions)}</span> <span class="k">model version${m.versions === 1 ? "" : "s"}</span></span>
+        ${planStat}
       </div>
       ${shown.length
         ? `<ul class="disc">${shown.map(d => `<li>${esc(d)}</li>`).join("")}</ul>`

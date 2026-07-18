@@ -145,6 +145,29 @@ ul.disc li::before {
   padding: 8px;
   line-height: 0;
 }
+
+/* auto-generated legend under token boards (see updateBoardLegend in gb.js) */
+.boardlegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 9px;
+  line-height: 1.5;
+  font-size: 10.5px;
+  color: var(--dim);
+}
+.boardlegend .lg { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.boardlegend .sw {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  font-size: 8px;
+  font-weight: 600;
+}
 .boardframe.verified { border-color: rgba(63, 185, 80, 0.6); box-shadow: 0 0 0 1px rgba(63,185,80,.15), 0 0 24px rgba(63,185,80,.06); }
 canvas.board { image-rendering: auto; display: block; }
 

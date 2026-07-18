@@ -56,13 +56,15 @@ export function playEpisode({ id, w, h, mines, seed, rec, maxSteps = 60, neighbo
   return { ep, finished: last !== "playing", won: last === "won", firstRevealWasSafe };
 }
 
-export function explorationPlan({ rec, baseSeed = 1000, startId = 0, neighborhood = "n8", torus = false }) {
+export function explorationPlan({ rec, baseSeed = 1000, startId = 0, neighborhood = "n8", torus = false, lite = false }) {
   const episodes = [];
   let id = startId, wins = 0, seed = baseSeed, firstSafeCount = 0, firstTotal = 0;
-  const boards = [
-    [4, 4, 2], [4, 4, 2], [4, 4, 3], [5, 5, 3], [5, 5, 4], [5, 5, 4],
-    [6, 6, 5], [6, 6, 5], [6, 6, 7], [5, 5, 6], [4, 4, 4], [6, 6, 4],
-  ];
+  const boards = lite
+    ? [[4, 4, 2], [5, 5, 3], [5, 5, 4], [6, 6, 5]]
+    : [
+        [4, 4, 2], [4, 4, 2], [4, 4, 3], [5, 5, 3], [5, 5, 4], [5, 5, 4],
+        [6, 6, 5], [6, 6, 5], [6, 6, 7], [5, 5, 6], [4, 4, 4], [6, 6, 4],
+      ];
   for (const [w, h, m] of boards) {
     const r = playEpisode({ id: `E${id++}`, w, h, mines: m, seed: seed++, rec, neighborhood, torus });
     if (r.finished) episodes.push(r.ep);

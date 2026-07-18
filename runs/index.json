@@ -1,14 +1,31 @@
 [
   {
-    "id": "2026-07-18T14-38-33_minesweeper_twisted",
-    "startedAt": "2026-07-18T14:38:33.691Z",
+    "id": "2026-07-18T15-28-35_minesweeper_twisted",
+    "startedAt": "2026-07-18T15:28:35.965Z",
     "env": "env_A",
     "envKind": "grid",
     "track": "famous",
     "game": "minesweeper_twisted",
     "title": "Definitely Not Minesweeper",
     "model": "claude-opus-4-8",
-    "driver": "sdk"
+    "driver": "sdk",
+    "finishedAt": "2026-07-18T15:55:30.960Z",
+    "converged": true,
+    "versions": 3,
+    "episodes": 11,
+    "totalSteps": 42,
+    "discoveries": [
+      "Revealed number = count of mines at the 8 knight offsets (±1,±2)/(±2,±1) computed toroidally, per-offset-vector; on 4x4 opposite offsets coincide so values double. Verified across all episodes.",
+      "Mines are exposed as '*' at game end; the specific mine that lost the game shows '!' (E1,E2,E3,E5,E6).",
+      "Revealing a 0-valued cell flood-fills through toroidal KNIGHT adjacency; number cells reveal but stop propagation, mines block.",
+      "CORRECTED: flood-fill does NOT treat flagged cells as blockers — it reveals flagged non-mine cells too, clearing the flag and incrementing the counter (E6: flag at (4,2) counter 3, reveal(5,3) flood reaches it -> '2', counter back to 4).",
+      "Directly reveal-clicking a flagged cell is a no-op; flag on a revealed cell is a no-op (E6 step2, E1 flag).",
+      "During play counter = hiddenCount - active flags. Flags refunded when flood reveals them.",
+      "CORRECTED: on a LOSS, still-flagged non-mine cells render as 'F' (E7 (1,0) stays 'F'); mines render '*'/'!'. Counter is left unchanged on loss.",
+      "On WIN the whole board is exposed (all non-mine cells shown as values). Counter is simply the natural running counter after flood refunds flags (E0=2, E4 flags refunded back to 2). No special recompute needed.",
+      "Win = every non-mine cell revealed OR flagged; loss = a mine revealed.",
+      "Placement rule not observable (hiddenGrid supplied for replays); brand-new games place mines uniformly at random distinct cells."
+    ]
   },
   {
     "id": "2026-07-18T14-35-39_sokoban_basic",

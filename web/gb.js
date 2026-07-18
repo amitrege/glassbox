@@ -237,7 +237,49 @@ function drawBoard(canvas, obs, opts = {}) {
       else drawTokenCell(ctx, x * cell, y * cell, cell, rows[y][x]);
     }
   }
+  updateBoardLegend(canvas, parsed, cssW);
   return { cell, w, h, mode: parsed.mode };
+}
+
+/* Auto-generated legend for token boards: one chip per distinct token in the
+   current frame (swatch in the cell's color + abbreviated label + full name).
+   Char boards (minesweeper) need no legend — any stale legend is removed. */
+function isBgToken(t) {
+  const l = String(t).toLowerCase();
+  return t === "" || t === "." || l === "background" || l === "empty";
+}
+
+function updateBoardLegend(canvas, parsed, cssW) {
+  const parent = canvas.parentElement;
+  if (!parent) return;
+  let el = parent.querySelector(".boardlegend");
+  if (!parsed || parsed.mode !== "token") {
+    if (el) el.remove();
+    return;
+  }
+  const seen = [], have = new Set();
+  for (const row of parsed.rows) {
+    for (const tok of row) {
+      const t = String(tok);
+      if (!have.has(t)) { have.add(t); seen.push(t); }
+    }
+  }
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "boardlegend";
+    parent.appendChild(el);
+  }
+  const key = seen.join("") + "" + cssW;
+  if (el.dataset.k === key) return;             // unchanged frame vocabulary
+  el.dataset.k = key;
+  el.style.width = cssW + "px";
+  el.innerHTML = seen.map(t => {
+    if (isBgToken(t)) {
+      return `<span class="lg"><span class="sw" style="background:#171b22;color:#3d434d;border-color:#232833">·</span><span class="nm">background</span></span>`;
+    }
+    const c = tokenColor(t);
+    return `<span class="lg"><span class="sw" style="background:${c.bg};color:${c.fg}">${esc(tokenAbbrev(t))}</span><span class="nm">${esc(t)}</span></span>`;
+  }).join("");
 }
 
 /* ---------- minimal, muted JS syntax highlight (line-based) ---------- */

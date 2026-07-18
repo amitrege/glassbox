@@ -28,7 +28,8 @@ async function sdkComplete({ system, prompt, maxTokens }) {
     messages: [{ role: "user", content: prompt }],
   });
   const msg = await stream.finalMessage();
-  return msg.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
+  const text = msg.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
+  return { text, stopReason: msg.stop_reason, blocks: msg.content.map((b) => b.type).join(",") };
 }
 
 function cliComplete({ system, prompt }) {
@@ -56,11 +57,11 @@ async function mockComplete(args) {
 
 export async function complete({ system, prompt, maxTokens = 100000, purpose = "synthesize" }) {
   const t0 = Date.now();
-  let text;
-  if (DRIVER === "sdk") text = await sdkComplete({ system, prompt, maxTokens });
+  let text, extra = {};
+  if (DRIVER === "sdk") { const r = await sdkComplete({ system, prompt, maxTokens }); text = r.text; extra = { stopReason: r.stopReason, blocks: r.blocks }; }
   else if (DRIVER === "mock") text = await mockComplete({ system, prompt, purpose });
   else text = await cliComplete({ system, prompt });
-  return { text, ms: Date.now() - t0 };
+  return { text, ms: Date.now() - t0, ...extra };
 }
 
 // Extract the last fenced code block; fall back to the whole reply.

@@ -12,32 +12,40 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = path.join(__dirname, "..", "runs");
 const MAX_ITER = 8;
 
-export async function runMinesweeper({ label = "minesweeper", neighborhood = "n8", torus = false, title = "Minesweeper" } = {}) {
+export async function runMinesweeper({ label = "minesweeper", neighborhood = "n8", torus = false, lite = false, title = "Minesweeper" } = {}) {
   const id = `${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}_${label}`;
   const rec = new Recorder(RUNS_DIR, id, {
     env: "env_A", envKind: "grid", track: "famous", game: label,
     title, model: MODEL, driver: DRIVER,
   });
+  updateIndex(RUNS_DIR);
   console.log(`run ${id} — driver=${DRIVER} model=${MODEL}`);
 
   rec.event("phase", { name: "explore", text: "Probing the unknown environment…" });
-  let { episodes, nextId, nextSeed, wins, firstRevealSafe } = explorationPlan({ rec, neighborhood, torus });
+  let { episodes, nextId, nextSeed, wins, firstRevealSafe } = explorationPlan({ rec, neighborhood, torus, lite });
   console.log(`explored: ${episodes.length} episodes, ${wins} wins, firstRevealSafe=${firstRevealSafe.join("/")}`);
 
   let code = null, report = null, converged = false, version = 0;
   for (let iter = 1; iter <= MAX_ITER; iter++) {
     const prompt = version === 0 ? firstPrompt(episodes) : revisePrompt(episodes, code, report);
-    rec.event("llm_call", { iter, purpose: version === 0 ? "synthesize" : "revise", promptChars: prompt.length });
+    rec.event("llm_call", { iter, purpose: version === 0 ? "synthesize" : "revise", promptChars: prompt.length, promptText: prompt });
     console.log(`iter ${iter}: calling LLM (${prompt.length} chars)…`);
-    let text, ms;
+    let text, ms, stopReason, blocks;
     try {
-      ({ text, ms } = await complete({ system: SYSTEM, prompt, purpose: "synthesize" }));
+      ({ text, ms, stopReason, blocks } = await complete({ system: SYSTEM, prompt, purpose: "synthesize" }));
     } catch (e) {
       console.error(`LLM call failed: ${e.message}`); rec.event("llm_error", { iter, error: String(e.message).slice(0, 300) });
       await new Promise((r) => setTimeout(r, 5000));
       continue;
     }
-    code = extractCode(text);
+    const candidate = extractCode(text);
+    if (!candidate || !candidate.trim() || !/const\s+model/.test(candidate)) {
+      rec.saveFile(`raw_response_iter${iter}.txt`, text || "(empty)");
+      rec.event("llm_error", { iter, error: "empty or malformed response (no model code) — retrying", rawChars: (text || "").length, stopReason, blocks, ms });
+      console.log(`iter ${iter}: empty/malformed LLM response (${(text||"").length} chars, stop=${stopReason}, blocks=${blocks}, ${ms}ms), retrying`);
+      continue;
+    }
+    code = candidate;
     version++;
     const narration = extractNarration(text) || "(revised the model)";
     rec.event("llm_result", { iter, ms, chars: text.length });

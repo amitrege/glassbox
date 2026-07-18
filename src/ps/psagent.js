@@ -57,6 +57,7 @@ export async function runPS({ gameFile, label, title }) {
   const realSource = fs.readFileSync(gameFile, "utf8");
   const id = `${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}_${label}`;
   const rec = new Recorder(RUNS_DIR, id, { env: "env_PS", envKind: "tokens", track: "ps", game: label, title, model: MODEL, driver: DRIVER });
+  updateIndex(RUNS_DIR);
   console.log(`run ${id} — driver=${DRIVER} model=${MODEL}`);
 
   // ground truth for the discovery beat (never shown to the agent)
@@ -80,7 +81,7 @@ export async function runPS({ gameFile, label, title }) {
   let source = null, report = null, converged = false, version = 0, planInfo = null, discoveries = [];
   for (let iter = 1; iter <= MAX_ITER; iter++) {
     const prompt = version === 0 ? psFirstPrompt(attempts, names) : psRevisePrompt(attempts, names, source, report);
-    rec.event("llm_call", { iter, purpose: version === 0 ? "synthesize" : "revise", promptChars: prompt.length });
+    rec.event("llm_call", { iter, purpose: version === 0 ? "synthesize" : "revise", promptChars: prompt.length, promptText: prompt });
     console.log(`iter ${iter}: calling LLM (${prompt.length} chars)…`);
     let text, ms;
     try { ({ text, ms } = await complete({ system: PS_SYSTEM, prompt, purpose: "ps_synthesize" })); }
@@ -129,7 +130,9 @@ export async function runPS({ gameFile, label, title }) {
       const r = await act(engine, a);
       const actual = observe(engine);
       const pred = predicted.obs[i + 1];
-      const match = actual === pred;
+      // After the winning move the real engine advances beyond the learned scope —
+      // the post-win frame is not comparable, so it is n/a rather than a mismatch.
+      const match = r.solved ? null : actual === pred;
       execActions.push(a); execObs.push(actual); execStatuses.push(r.solved ? "solved" : "playing");
       rec.event("plan_step", { ep: `PLAN_v${version}`, i: i + 1, action: a, obs: actual, predictedObs: pred, match, status: r.solved ? "solved" : "playing" });
       if (r.solved) { realSolved = true; break; }
