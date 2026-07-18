@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLASSBOX — play the reconstruction</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="gb.css">
+<style>
+  body { overflow-y: auto; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 32px 80px; }
+
+  header { display: flex; align-items: center; gap: 18px; margin-bottom: 26px; }
+  header .title { color: #e6edf3; }
+  header .spacer { flex: 1; }
+
+  .banner {
+    border: 1px solid rgba(63, 185, 80, 0.55);
+    background: rgba(63, 185, 80, 0.05);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+  }
+  .banner .big { font-size: 15px; line-height: 1.65; color: #e6edf3; }
+  .banner .big em { font-style: normal; color: var(--green); }
+  .banner .small { margin-top: 8px; color: var(--dim); font-size: 11.5px; }
+
+  .controls { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .controls .spacer { flex: 1; }
+  .readout { display: flex; gap: 18px; align-items: baseline; }
+  .readout .item .v { font-size: 17px; color: #e6edf3; font-variant-numeric: tabular-nums; }
+  .readout .item .k { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dimmer); margin-left: 6px; }
+  #statusChip { min-width: 90px; text-align: center; }
+
+  .stage { display: flex; justify-content: center; margin-bottom: 10px; }
+  .boardwrap { position: relative; display: inline-block; }
+  #overlay {
+    display: none;
+    position: absolute;
+    inset: 8px;
+    background: rgba(10, 12, 16, 0.82);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  #overlay.on { display: flex; }
+  #overlay .word { font-size: 30px; font-weight: 700; letter-spacing: 0.28em; padding-left: 0.28em; }
+  #overlay .word.green { color: var(--green); }
+  #overlay .word.red { color: var(--red); }
+  #overlay .hint { color: var(--dim); font-size: 11px; letter-spacing: 0.08em; }
+  .seedline { text-align: center; color: var(--faint); font-size: 10.5px; letter-spacing: 0.08em; margin-bottom: 34px; }
+
+  section.learned { margin-top: 8px; }
+  section.learned .head { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  section.learned .head::after { content: ""; flex: 1; border-top: 1px solid var(--border-dim); }
+  ul.disc { font-size: 12.5px; }
+  ul.disc li { color: var(--dim); }
+
+  details { margin-top: 26px; border: 1px solid var(--border); background: var(--panel); }
+  details summary {
+    cursor: pointer;
+    padding: 10px 16px;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--dim);
+    user-select: none;
+  }
+  details summary:hover { color: var(--text); }
+  details[open] summary { border-bottom: 1px solid var(--border-dim); color: var(--amber); }
+  details pre {
+    margin: 0;
+    padding: 14px 18px;
+    overflow: auto;
+    max-height: 480px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+  .backlink { margin-top: 30px; }
+  .fail { color: var(--red); padding: 24px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="index.html"><span class="logo"></span>GLASSBOX</a>
+    <span class="dimmer">/</span>
+    <span class="title" id="pageTitle">play the reconstruction</span>
+    <div class="spacer"></div>
+    <a class="btn" id="watchLink" href="#">▶ watch it being learned</a>
+  </header>
+
+  <div id="content">
+    <div class="banner" id="banner" style="display:none">
+      <div class="big" id="bannerBig"></div>
+      <div class="small" id="bannerSmall"></div>
+    </div>
+
+    <div class="controls">
+      <select class="btn" id="preset">
+        <option value="8,8,10">8×8 · 10 mines</option>
+        <option value="9,9,12" selected>9×9 · 12 mines</option>
+        <option value="12,12,20">12×12 · 20 mines</option>
+      </select>
+      <button class="btn primary" id="newGame">new game</button>
+      <span class="dimmer" id="hint">left-click reveal · right-click flag</span>
+      <span class="spacer"></span>
+      <div class="readout">
+        <span class="item"><span class="v" id="counter">–</span><span class="k" id="counterK">counter</span></span>
+        <span class="item"><span class="v" id="moves">0</span><span class="k">moves</span></span>
+        <span class="chip dim" id="statusChip">–</span>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="boardwrap">
+        <span class="boardframe"><canvas class="board" id="board"></canvas></span>
+        <div id="overlay">
+          <div class="word" id="overlayWord"></div>
+          <div class="hint" id="overlayHint"></div>
+        </div>
+      </div>
+    </div>
+    <div class="seedline" id="seedline"></div>
+
+    <section class="learned" id="learnedSec" style="display:none">
+      <div class="head"><span class="lbl">what the AI worked out on its own</span></div>
+      <ul class="disc" id="discList"></ul>
+    </section>
+
+    <details id="codeSec" style="display:none">
+      <summary>view the learned code — model_final.js</summary>
+      <pre id="codePre"></pre>
+    </details>
+
+    <div class="backlink"><a class="btn" href="index.html">← all runs</a></div>
+  </div>
+</div>
+<div id="jserr"></div>
+
+<script src="gb.js"></script>
+<script>
+"use strict";
+
+const runId = qparam("run");
+const $ = id => document.getElementById(id);
+
+let model = null;
+let state = null;
+let moves = 0;
+let geom = null;         // {cell,w,h} from drawBoard
+let gameOver = false;
+
+(async function boot() {
+  if (!runId) { fail("no run specified — open this page as play.html?run=<id>"); return; }
+  $("watchLink").href = `watch.html?run=${encodeURIComponent(runId)}`;
+
+  let meta = {}, code = "";
+  try {
+    const [mr, cr] = await Promise.all([
+      fetch(`../runs/${encodeURIComponent(runId)}/meta.json`, { cache: "no-store" }),
+      fetch(`../runs/${encodeURIComponent(runId)}/model_final.js`, { cache: "no-store" }),
+    ]);
+    if (!cr.ok) throw new Error(`model_final.js — HTTP ${cr.status}`);
+    code = await cr.text();
+    if (mr.ok) meta = await mr.json();
+  } catch (e) {
+    fail("could not load the learned model: " + e.message);
+    return;
+  }
+
+  try {
+    model = new Function(code + "\n;return model;")();
+    if (!model || typeof model.init !== "function" || typeof model.step !== "function" || typeof model.observe !== "function") {
+      throw new Error("model object missing init/step/observe");
+    }
+  } catch (e) {
+    fail("the learned model failed to evaluate: " + e.message);
+    return;
+  }
+
+  // honest banner
+  const n = meta.episodes != null ? meta.episodes : "all recorded";
+  $("pageTitle").textContent = `play the reconstruction — ${meta.title || meta.game || runId}`;
+  document.title = `GLASSBOX — play ${meta.title || runId}`;
+  $("banner").style.display = "";
+  $("bannerBig").innerHTML =
+    `Every rule here was <em>learned by the AI from observation</em> — written as code, then
+     verified by exact replay against ${esc(String(n))} recorded episodes.
+     This is not the original game's code.`;
+  $("bannerSmall").textContent =
+    `model ${meta.model || "?"} · run ${runId}` +
+    (meta.converged ? ` · converged after ${meta.versions} model version${meta.versions === 1 ? "" : "s"}` : " · did not converge") +
+    ` · the code below is executing this game right now`;
+
+  const disc = Array.isArray(meta.discoveries) ? meta.discoveries : (model.discoveries || []);
+  if (disc.length) {
+    $("learnedSec").style.display = "";
+    $("discList").innerHTML = disc.map(d => `<li>${esc(d)}</li>`).join("");
+  }
+  $("codeSec").style.display = "";
+  $("codePre").innerHTML = String(code).split("\n").map(highlightLine).join("\n");
+
+  wireInput();
+  newGame();
+})();
+
+function fail(msg) {
+  $("content").innerHTML = `<div class="fail">${esc(msg)}</div><a class="btn" href="index.html">← back to runs</a>`;
+}
+
+function currentPreset() {
+  const [w, h, m] = $("preset").value.split(",").map(Number);
+  return { w, h, m };
+}
+
+function newGame() {
+  const { w, h, m } = currentPreset();
+  const seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
+  const rng = mulberry32(seed);
+  try {
+    state = model.init(w, h, m, null, rng);
+  } catch (e) {
+    fail("model.init threw: " + e.message);
+    return;
+  }
+  moves = 0;
+  gameOver = false;
+  $("seedline").textContent = `seed 0x${seed.toString(16).padStart(8, "0")} · board ${w}×${h} · ${m} mines · executed by the learned model`;
+  $("overlay").classList.remove("on");
+  refresh();
+}
+
+function refresh() {
+  let obs;
+  try {
+    obs = model.observe(state);
+  } catch (e) {
+    fail("model.observe threw: " + e.message);
+    return;
+  }
+  geom = drawBoard($("board"), obs.grid, { cell: cellSizeFor(), minCell: 22, maxCell: 40 });
+
+  // vars readout (counter etc.)
+  const vars = obs.vars || {};
+  const keys = Object.keys(vars);
+  if (keys.length) {
+    $("counter").textContent = String(vars[keys[0]]);
+    $("counterK").textContent = keys[0];
+  } else {
+    $("counter").textContent = "–";
+  }
+  $("moves").textContent = String(moves);
+
+  const chip = $("statusChip");
+  const stt = obs.status || "playing";
+  chip.textContent = stt.toUpperCase();
+  chip.className = "chip " + (stt === "won" ? "green" : stt === "lost" ? "red" : "blue");
+
+  if (stt !== "playing" && !gameOver) {
+    gameOver = true;
+    const ov = $("overlay"), w = $("overlayWord"), hint = $("overlayHint");
+    if (stt === "won") {
+      w.textContent = "CLEARED";
+      w.className = "word green";
+      hint.textContent = "every safe cell revealed — the learned win rule fired";
+    } else {
+      w.textContent = "MINE";
+      w.className = "word red";
+      hint.textContent = "the learned loss rule fired — new game to try again";
+    }
+    ov.classList.add("on");
+  }
+}
+
+function cellSizeFor() {
+  const { w } = currentPreset();
+  return w <= 9 ? 38 : 32;
+}
+
+function act(type, x, y) {
+  if (!state || gameOver) return;
+  try {
+    const ret = model.step(state, { type, x, y });
+    if (ret !== undefined && ret !== null) state = ret;
+  } catch (e) {
+    fail("model.step threw: " + e.message);
+    return;
+  }
+  moves++;
+  refresh();
+}
+
+function wireInput() {
+  const canvas = $("board");
+  const cellAt = ev => {
+    if (!geom) return null;
+    const r = canvas.getBoundingClientRect();
+    const x = Math.floor((ev.clientX - r.left) / geom.cell);
+    const y = Math.floor((ev.clientY - r.top) / geom.cell);
+    if (x < 0 || y < 0 || x >= geom.w || y >= geom.h) return null;
+    return { x, y };
+  };
+  canvas.addEventListener("click", ev => {
+    const c = cellAt(ev);
+    if (c) act("reveal", c.x, c.y);
+  });
+  canvas.addEventListener("contextmenu", ev => {
+    ev.preventDefault();
+    const c = cellAt(ev);
+    if (c) act("flag", c.x, c.y);
+  });
+  $("newGame").addEventListener("click", newGame);
+  $("preset").addEventListener("change", newGame);
+}
+</script>
+</body>
+</html>

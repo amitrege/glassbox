@@ -1,0 +1,26 @@
+{
+  "id": "2026-07-18T14-29-01_minesweeper",
+  "startedAt": "2026-07-18T14:29:01.273Z",
+  "env": "env_A",
+  "envKind": "grid",
+  "track": "famous",
+  "game": "minesweeper",
+  "title": "Minesweeper",
+  "model": "claude-opus-4-8",
+  "driver": "sdk",
+  "finishedAt": "2026-07-18T14:31:00.945Z",
+  "converged": true,
+  "versions": 1,
+  "episodes": 22,
+  "totalSteps": 174,
+  "discoveries": [
+    "Classic Minesweeper: revealed digit = count of mines in the 8 neighbors (verified across all numbered cells in every episode).",
+    "counter = hiddenCount - (number of currently-flagged cells); flagging decrements, unflagging increments, can go negative (E14 reaches -2).",
+    "flag toggles only on hidden cells; flag/reveal on an already-revealed cell is a no-op (E1 flag(1,0) on a revealed 0 keeps counter).",
+    "Direct reveal on a flagged cell is a no-op (E13 reveal(2,2) while flagged unchanged).",
+    "Flood fill from a 0-cell reveals neighbors INCLUDING flagged ones, clearing the flag and restoring counter (E15: flag(1,2) then reveal(3,3) un-flags it, counter 1->2).",
+    "On loss: clicked mine shown as '!', all other mines as '*' (even if flagged); flagged non-mines stay 'F'. On win: all mines shown as '*'.",
+    "reconstructHidden: hidden cells are exactly those shown as '*' or '!' in the final grid; count matches hiddenCount in all 19 episodes.",
+    "Win = every non-mine cell revealed; Loss = revealing a mine."
+  ]
+}

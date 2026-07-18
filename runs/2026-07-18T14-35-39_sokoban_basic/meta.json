@@ -1,0 +1,27 @@
+{
+  "id": "2026-07-18T14-35-39_sokoban_basic",
+  "startedAt": "2026-07-18T14:35:39.535Z",
+  "env": "env_PS",
+  "envKind": "tokens",
+  "track": "ps",
+  "game": "sokoban_basic",
+  "title": "Sokoban (learned from play)",
+  "model": "claude-opus-4-8",
+  "driver": "sdk",
+  "finishedAt": "2026-07-18T14:36:17.086Z",
+  "converged": true,
+  "versions": 2,
+  "episodes": 12,
+  "totalSteps": 98,
+  "discoveries": [
+    "Player+Target and Crate+Target share cells, but Player and Crate never do, so Target lives on its own collision layer while Player/Crate/Wall share one.",
+    "Pushing works: A1 DOWN moves Player onto the crate's old cell while the crate slides one down, confirming a single push rule.",
+    "Walls block: A2 LEFT (into a wall) and A6 repeated DOWN into a wall leave the grid unchanged.",
+    "The Crate+Target cell stays fixed and the player can occupy a Target (A7 shows Player+Target), so Target is a passive overlay object.",
+    "No logged attempt wins; two crates and two targets (one already satisfied) suggest \"All Crate on Target\" as the win condition.",
+    "The prior crash was purely a missing \".\" = Background legend entry, not a logic error."
+  ],
+  "planLen": 33,
+  "planStates": 588,
+  "realOptimal": 33
+}

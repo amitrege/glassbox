@@ -1,0 +1,90 @@
+[
+  {
+    "id": "2026-07-18T14-38-33_minesweeper_twisted",
+    "startedAt": "2026-07-18T14:38:33.691Z",
+    "env": "env_A",
+    "envKind": "grid",
+    "track": "famous",
+    "game": "minesweeper_twisted",
+    "title": "Definitely Not Minesweeper",
+    "model": "claude-opus-4-8",
+    "driver": "sdk"
+  },
+  {
+    "id": "2026-07-18T14-35-39_sokoban_basic",
+    "startedAt": "2026-07-18T14:35:39.535Z",
+    "env": "env_PS",
+    "envKind": "tokens",
+    "track": "ps",
+    "game": "sokoban_basic",
+    "title": "Sokoban (learned from play)",
+    "model": "claude-opus-4-8",
+    "driver": "sdk",
+    "finishedAt": "2026-07-18T14:36:17.086Z",
+    "converged": true,
+    "versions": 2,
+    "episodes": 12,
+    "totalSteps": 98,
+    "discoveries": [
+      "Player+Target and Crate+Target share cells, but Player and Crate never do, so Target lives on its own collision layer while Player/Crate/Wall share one.",
+      "Pushing works: A1 DOWN moves Player onto the crate's old cell while the crate slides one down, confirming a single push rule.",
+      "Walls block: A2 LEFT (into a wall) and A6 repeated DOWN into a wall leave the grid unchanged.",
+      "The Crate+Target cell stays fixed and the player can occupy a Target (A7 shows Player+Target), so Target is a passive overlay object.",
+      "No logged attempt wins; two crates and two targets (one already satisfied) suggest \"All Crate on Target\" as the win condition.",
+      "The prior crash was purely a missing \".\" = Background legend entry, not a logic error."
+    ],
+    "planLen": 33,
+    "planStates": 588,
+    "realOptimal": 33
+  },
+  {
+    "id": "2026-07-18T14-32-32_minesweeper_knight",
+    "startedAt": "2026-07-18T14:32:32.184Z",
+    "env": "env_A",
+    "envKind": "grid",
+    "track": "famous",
+    "game": "minesweeper_knight",
+    "title": "Minesweeper… or is it?",
+    "model": "claude-opus-4-8",
+    "driver": "sdk",
+    "finishedAt": "2026-07-18T14:37:40.647Z",
+    "converged": true,
+    "versions": 1,
+    "episodes": 15,
+    "totalSteps": 59,
+    "discoveries": [
+      "Digit on a revealed cell = number of hidden mines exactly one knight's-move away (offsets (±1,±2),(±2,±1)); verified on all revealed digits in E0-E11 (200+ cells, 0 mismatches).",
+      "Mines are the hidden special cells; on WIN all non-mine cells show their knight-digit and mines show '*'; on LOSS the clicked mine shows '!', other mines '*', unrevealed non-mines '#', flagged non-mines 'F'.",
+      "Reveal on a 0-digit cell flood-fills through its on-board knight-neighbors (E3 reveal(4,4) revealed exactly its two knight-neighbors (3,2)=2,(2,3)=1).",
+      "counter = hiddenCount - (currently flagged cells). Flag on a revealed/flag no-op leaves counter unchanged (E1,E5); flood-fill that covers a flagged cell clears the flag and raises counter (E4:2->4, E6:4->5).",
+      "Reveal on a flagged or already-revealed cell is a no-op (E6 reveal(1,3) unchanged). Flags on mine cells survive a win (E5 counter stays 3), flags on non-mines cleared by winning flood (E7 counter 4->5).",
+      "reconstructHidden: hidden cells are exactly the '*' and '!' characters in the final grid (matches hiddenCount in every episode)."
+    ]
+  },
+  {
+    "id": "2026-07-18T14-29-01_minesweeper",
+    "startedAt": "2026-07-18T14:29:01.273Z",
+    "env": "env_A",
+    "envKind": "grid",
+    "track": "famous",
+    "game": "minesweeper",
+    "title": "Minesweeper",
+    "model": "claude-opus-4-8",
+    "driver": "sdk",
+    "finishedAt": "2026-07-18T14:31:00.945Z",
+    "converged": true,
+    "versions": 1,
+    "episodes": 22,
+    "totalSteps": 174,
+    "discoveries": [
+      "Classic Minesweeper: revealed digit = count of mines in the 8 neighbors (verified across all numbered cells in every episode).",
+      "counter = hiddenCount - (number of currently-flagged cells); flagging decrements, unflagging increments, can go negative (E14 reaches -2).",
+      "flag toggles only on hidden cells; flag/reveal on an already-revealed cell is a no-op (E1 flag(1,0) on a revealed 0 keeps counter).",
+      "Direct reveal on a flagged cell is a no-op (E13 reveal(2,2) while flagged unchanged).",
+      "Flood fill from a 0-cell reveals neighbors INCLUDING flagged ones, clearing the flag and restoring counter (E15: flag(1,2) then reveal(3,3) un-flags it, counter 1->2).",
+      "On loss: clicked mine shown as '!', all other mines as '*' (even if flagged); flagged non-mines stay 'F'. On win: all mines shown as '*'.",
+      "reconstructHidden: hidden cells are exactly those shown as '*' or '!' in the final grid; count matches hiddenCount in all 19 episodes.",
+      "Win = every non-mine cell revealed; Loss = revealing a mine."
+    ]
+  }
+]

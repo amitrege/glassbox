@@ -1,0 +1,17 @@
+{
+  "name": "glassbox",
+  "version": "1.0.0",
+  "description": "Watch an AI learn a game by writing its rules as code",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.3",
+    "puzzlescript": "^6.0.0-alpha.2"
+  }
+}

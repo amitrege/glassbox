@@ -1,0 +1,68 @@
+title Sokoban Clone
+author GLASSBOX
+
+========
+OBJECTS
+========
+
+Background
+lightgray
+
+Wall
+darkgray
+
+Player
+blue
+
+Crate
+orange
+
+Target
+red
+
+=======
+LEGEND
+=======
+
+. = Background
+@ = Crate and Target
+# = Wall
+P = Player
+* = Crate
+O = Target
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Target
+Player, Wall, Crate
+
+======
+RULES
+======
+
+[ > Player | Crate ] -> [ > Player | > Crate ]
+
+==============
+WINCONDITIONS
+==============
+
+All Crate on Target
+
+=======
+LEVELS
+=======
+
+####..
+#.O#..
+#..###
+#@P..#
+#..*.#
+#..###
+####..

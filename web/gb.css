@@ -1,0 +1,172 @@
+/* GLASSBOX — dark laboratory theme (shared) */
+:root {
+  --bg: #0c0e12;
+  --panel: #10131a;
+  --panel2: #0e1116;
+  --border: #2a2f3a;
+  --border-dim: #1c2028;
+  --text: #c9d1d9;
+  --dim: #8b949e;
+  --dimmer: #586069;
+  --faint: #3d434d;
+  --green: #3fb950;
+  --green-dim: rgba(63, 185, 80, 0.12);
+  --red: #f85149;
+  --red-dim: rgba(248, 81, 73, 0.12);
+  --amber: #d29922;
+  --amber-dim: rgba(210, 153, 34, 0.10);
+  --blue: #58a6ff;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+a { color: var(--text); text-decoration: none; }
+a:hover { color: #fff; }
+
+::selection { background: rgba(88, 166, 255, 0.25); }
+
+/* scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #2c313c transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #262b34; border-radius: 0; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* small-caps letterspaced section labels */
+.lbl {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--dim);
+  font-weight: 500;
+}
+
+/* brand */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: #e6edf3;
+  white-space: nowrap;
+}
+.brand .logo {
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--green);
+  display: inline-block;
+  position: relative;
+  flex: none;
+}
+.brand .logo::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  background: var(--green);
+  opacity: 0.85;
+}
+
+/* chips / badges */
+.chip {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  border-radius: 2px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.chip.green  { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+.chip.red    { color: var(--red);   border-color: var(--red);   background: var(--red-dim); }
+.chip.amber  { color: var(--amber); border-color: var(--amber); background: var(--amber-dim); }
+.chip.blue   { color: var(--blue);  border-color: rgba(88,166,255,.55); background: rgba(88,166,255,.08); }
+.chip.dim    { color: var(--dimmer); border-color: var(--border-dim); }
+
+/* buttons */
+.btn {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: #161b24;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  cursor: pointer;
+  border-radius: 2px;
+  user-select: none;
+}
+.btn:hover { border-color: #3d4450; background: #1b212c; color: #fff; }
+.btn.primary { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+.btn.primary:hover { background: rgba(63, 185, 80, 0.2); }
+
+select.btn { padding: 5px 8px; text-transform: none; letter-spacing: 0.03em; }
+
+/* discovery lists (the payoff) */
+ul.disc {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+ul.disc li {
+  position: relative;
+  padding: 3px 0 3px 22px;
+  color: var(--text);
+}
+ul.disc li::before {
+  content: "✓";
+  position: absolute;
+  left: 2px;
+  color: var(--green);
+  font-weight: 700;
+}
+
+/* board canvas frame */
+.boardframe {
+  display: inline-block;
+  border: 1px solid var(--border);
+  background: #14171d;
+  padding: 8px;
+  line-height: 0;
+}
+.boardframe.verified { border-color: rgba(63, 185, 80, 0.6); box-shadow: 0 0 0 1px rgba(63,185,80,.15), 0 0 24px rgba(63,185,80,.06); }
+canvas.board { image-rendering: auto; display: block; }
+
+/* error bar (populated by window.onerror) */
+#jserr {
+  display: none;
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 99;
+  background: #2d0f0e;
+  border-top: 1px solid var(--red);
+  color: var(--red);
+  padding: 6px 12px;
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+#jserr.on { display: block; }
+
+.dim { color: var(--dim); }
+.dimmer { color: var(--dimmer); }
+.green { color: var(--green); }
+.red { color: var(--red); }
+.amber { color: var(--amber); }
+
+hr.rule { border: 0; border-top: 1px solid var(--border-dim); margin: 18px 0; }
