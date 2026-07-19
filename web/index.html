@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GLASSBOX — an AI that learns games by writing their rules</title>
-<meta name="description" content="It plays a game it has never seen, figures out the rules by experimenting, and hands you back the rules as code — verified against every observation.">
+<title>GLASSBOX — an AI agent that reverse-engineers games into code</title>
+<meta name="description" content="Instead of training an agent to win, GLASSBOX drops an AI agent into a game it has never seen and has it recover the rules themselves — as runnable code, tested against every observation.">
 <meta property="og:title" content="GLASSBOX">
-<meta property="og:description" content="Watch an AI learn a game from scratch — and play the game it wrote.">
+<meta property="og:description" content="Watch an AI agent reverse-engineer a game from scratch — and play the game it wrote.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="gb.css">
 <style>
@@ -29,19 +29,22 @@
     text-align: center;
     position: relative;
   }
+  .kicker { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--dimmer); margin-bottom: 18px; }
   .moment .line {
-    font-size: clamp(26px, 4.2vw, 44px);
-    line-height: 1.3; font-weight: 700; color: #e6edf3;
-    max-width: 850px;
+    font-size: clamp(24px, 3.8vw, 40px);
+    line-height: 1.32; font-weight: 700; color: #e6edf3;
+    max-width: 880px;
   }
   .moment .line em { font-style: normal; color: var(--green); }
   .moment .line .a { color: var(--amber); }
   .moment .line .r { color: var(--red); }
+  .moment .line .dim2 { color: var(--dim); }
   .moment .quiet {
-    margin-top: 16px; color: var(--dim); font-size: clamp(13px, 1.4vw, 15px);
-    line-height: 1.7; max-width: 620px;
+    margin-top: 18px; color: var(--dim); font-size: clamp(13px, 1.4vw, 15px);
+    line-height: 1.8; max-width: 680px;
   }
-  .moment .vis { margin-top: 40px; }
+  .moment .quiet b { color: #e6edf3; }
+  .moment .vis { margin-top: 36px; }
 
   /* reveal on scroll — pure CSS scroll-driven animation; browsers without
      support (or with reduced motion) simply see everything, always */
@@ -62,23 +65,33 @@
   @keyframes bob { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 7px); } }
   @media (prefers-reduced-motion: reduce) { .cue { animation: none; } }
 
-  /* moment 2 — code */
+  /* contrast slide */
+  .contrast { display: flex; gap: 18px; align-items: center; justify-content: center; flex-wrap: wrap; color: var(--dim); font-size: 13.5px; }
+  .contrast .box { border: 1px solid var(--border); background: var(--panel); padding: 14px 20px; line-height: 1.7; }
+  .contrast .box b { color: #e6edf3; }
+  .contrast .arr { color: var(--dimmer); font-size: 18px; }
+
+  /* code card */
   .codecard {
     text-align: left; background: var(--panel); border: 1px solid var(--border);
     padding: 16px 22px; font-size: 13px; line-height: 1.75; white-space: pre;
-    overflow-x: auto; max-width: min(92vw, 620px); min-height: 220px;
+    overflow-x: auto; max-width: min(92vw, 620px); min-height: 200px;
   }
   .codecard .kw { color: #6b9fd6; } .codecard .str { color: #a3853a; } .codecard .cm { color: #4b5361; font-style: italic; }
+  .viscap { color: var(--dimmer); font-size: 11px; margin-top: 10px; letter-spacing: .06em; }
 
-  /* moment 3 — refutation pair */
+  /* method slide: loop chips + refutation pair */
+  .loopline { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
+  .loopline .step { border: 1px solid var(--border); background: var(--panel); color: #e6edf3; padding: 9px 16px; font-size: 13px; }
+  .loopline .step small { display: block; color: var(--dimmer); font-size: 10.5px; margin-top: 2px; }
+  .loopline .arr { color: var(--dimmer); }
   .pair { display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; }
   .pair .side { display: flex; flex-direction: column; gap: 8px; align-items: center; }
   .pair .t { font-size: 10px; letter-spacing: .24em; text-transform: uppercase; }
   .pair .t.real { color: var(--green); } .pair .t.pred { color: var(--red); }
 
-  /* moment 4 — chooser */
-  #choose .line { margin-bottom: 6vh; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 340px)); gap: 16px; justify-content: center; width: 100%; max-width: 1100px; }
+  /* choosers */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 380px)); gap: 16px; justify-content: center; width: 100%; max-width: 900px; margin-top: 5vh; }
   a.tile {
     display: flex; flex-direction: column; gap: 8px; text-align: left;
     border: 1px solid var(--border); background: var(--panel);
@@ -87,6 +100,7 @@
   }
   a.tile:hover { border-color: var(--green); transform: translateY(-3px); background: #10141b; }
   a.tile .t { color: #e6edf3; font-size: 16px; font-weight: 700; }
+  a.tile .rule { color: var(--amber); font-size: 12px; line-height: 1.6; }
   a.tile .hook { color: var(--dim); font-size: 12.5px; line-height: 1.6; }
   a.tile .go { margin-top: 6px; color: var(--green); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; opacity: 0; transition: opacity .18s ease; }
   a.tile:hover .go { opacity: 1; }
@@ -102,36 +116,78 @@
 <a class="brand-fixed" href="#top"><span class="logo"></span>GLASSBOX</a>
 
 <section class="moment" id="top">
-  <div class="line rv">An AI is dropped into a game<br>it has <em>never seen</em>.</div>
+  <div class="kicker rv">glassbox</div>
+  <div class="line rv">An AI <em>agent</em> is dropped into a game<br>it has never seen.</div>
   <div class="vis rv d1"><span class="boardframe"><canvas id="probeBoard"></canvas></span></div>
   <div class="quiet rv d2" id="probeCap">no name · no goal · no idea what any symbol means</div>
-  <div class="cue" data-next="m2">▾</div>
+  <div class="cue" data-next="usual">▾</div>
 </section>
 
-<section class="moment" id="m2">
-  <div class="line rv">It works the rules out —<br>and writes them <span class="a">as code</span>.</div>
-  <div class="vis rv d1"><div class="codecard" id="codeCard"></div></div>
-  <div class="quiet rv d2">beliefs written as code can't be vague</div>
-  <div class="cue" data-next="m3">▾</div>
-</section>
-
-<section class="moment" id="m3">
-  <div class="line rv">Reality checks every line.<br>One wrong cell — <span class="r">the theory dies</span>.</div>
+<section class="moment" id="usual">
+  <div class="kicker rv">the usual way</div>
+  <div class="line rv">Normally you'd <span class="dim2">train</span> an agent —<br>millions of rounds — until it <span class="dim2">wins</span>.</div>
   <div class="vis rv d1">
-    <div class="pair">
-      <div class="side"><span class="t real">reality</span><span class="boardframe"><canvas id="cmpA"></canvas></span></div>
-      <div class="side"><span class="t pred">its prediction</span><span class="boardframe"><canvas id="cmpB"></canvas></span></div>
+    <div class="contrast">
+      <div class="box">millions of games<br><b>of trial and error</b></div>
+      <span class="arr">→</span>
+      <div class="box">a neural network<br><b>that wins</b></div>
+      <span class="arr">→</span>
+      <div class="box">ask it <i>why</i><br><b>silence.</b></div>
     </div>
   </div>
-  <div class="quiet rv d2">refuted theories get repaired — until nothing reality deals can break them</div>
-  <div class="cue" data-next="choose">▾</div>
+  <div class="quiet rv d2">the rules stay locked inside the weights — it can beat the game, but it can't explain it</div>
+  <div class="cue" data-next="why">▾</div>
 </section>
 
-<section class="moment" id="choose">
-  <div class="line rv">Five games, learned from scratch.<br>Pick one.</div>
-  <div class="tiles rv d1" id="tiles"></div>
+<section class="moment" id="why">
+  <div class="kicker rv">why we built this</div>
+  <div class="line rv">What if you wanted to<br><em>reverse-engineer</em> the game instead?</div>
+  <div class="quiet rv">Recover the rules <b>themselves — as runnable code</b>. A game designer could point this at
+    their own game and find the logic flaws before players do. A modder could recover mechanics
+    nobody documented. And anyone can read exactly what the agent believes:</div>
+  <div class="vis rv d1"><div class="codecard" id="codeCard"></div></div>
+  <div class="viscap rv d2">actual output — code the agent wrote for one of the games below</div>
+  <div class="cue" data-next="method">▾</div>
+</section>
+
+<section class="moment" id="method">
+  <div class="kicker rv">how it works</div>
+  <div class="line rv">It <span class="a">proposes</span> rules, <span class="a">writes them as code</span> —<br>then <span class="a">tests</span> that code against everything it has seen.</div>
+  <div class="vis rv d1">
+    <div class="loopline">
+      <span class="step">play &amp; observe<small>every move logged</small></span>
+      <span class="arr">→</span>
+      <span class="step">propose rules<small>written as code</small></span>
+      <span class="arr">→</span>
+      <span class="step">replay reality through the code<small>every cell must match</small></span>
+      <span class="arr">⟲</span>
+      <span class="step">wrong? fix it<small>the failure goes back in</small></span>
+    </div>
+    <div class="pair">
+      <div class="side"><span class="t real">reality</span><span class="boardframe"><canvas id="cmpA"></canvas></span></div>
+      <div class="side"><span class="t pred">what its code predicted</span><span class="boardframe"><canvas id="cmpB"></canvas></span></div>
+    </div>
+  </div>
+  <div class="quiet rv d2">one wrong cell — like the ringed one — refutes a proposal. It revises until nothing reality deals can break it.</div>
+  <div class="cue" data-next="known">▾</div>
+</section>
+
+<section class="moment" id="known">
+  <div class="kicker rv">see it work</div>
+  <div class="line rv">Start with games you know.</div>
+  <div class="quiet rv">learned from a blank slate, then handed back — <b>playable</b></div>
+  <div class="tiles rv d1" id="tilesKnown"></div>
+  <div class="cue" data-next="invented">▾</div>
+</section>
+
+<section class="moment" id="invented">
+  <div class="kicker rv">the real test</div>
+  <div class="line rv">But those games are in every training set.<br>So we <em>invented new ones</em>.</div>
+  <div class="quiet rv">Same method, same agent — on rules we made up hours before the run, so no
+    training data can help. <b>We state our invented rules on each card; the agent had to find them the hard way.</b></div>
+  <div class="tiles rv d1" id="tilesInvented"></div>
   <div class="endnote rv d2">
-    <a class="subm" href="submit.html">or give it a game it has never seen →</a><br>
+    <a class="subm" href="submit.html">or give it a game you invent →</a><br>
     <span>every story is an append-only record — nothing is staged · reconstructions are entirely AI-written</span>
   </div>
 </section>
@@ -173,9 +229,9 @@ const FALLBACK_FRAMES = ["####/####/####/####", "####/#2##/####/####", "####/#2#
   setInterval(draw, 700);
 })();
 
-/* ---- moment 2: real learned code, typed in on reveal ---- */
+/* ---- why slide: real learned code, typed in on reveal ---- */
 const CODE_LINES = [
-  '<span class="cm">// from a model the AI wrote — theory v3</span>',
+  '<span class="cm">// output of a run below — the agent\'s own code</span>',
   '<span class="kw">const</span> KNIGHT = [[-2,-1],[-2,1],[-1,-2],[-1,2],',
   '                [1,-2],[1,2],[2,-1],[2,1]];',
   '<span class="cm">// digits count mines a knight\'s move away —</span>',
@@ -197,15 +253,17 @@ const CODE_LINES = [
       setTimeout(tick, 220);
     }
   };
-  new IntersectionObserver((es, ob) => {
-    if (es.some(e => e.isIntersecting) && !started) { started = true; tick(); ob.disconnect(); }
-  }, { threshold: 0.4 }).observe(el);
-  el.innerHTML = "&nbsp;";
+  try {
+    new IntersectionObserver((es, ob) => {
+      if (es.some(e => e.isIntersecting) && !started) { started = true; tick(); ob.disconnect(); }
+    }, { threshold: 0.4 }).observe(el);
+    el.innerHTML = "&nbsp;";
+  } catch (e) { el.innerHTML = CODE_LINES.join("\n"); }
 })();
 
-/* ---- moment 3: a reality-vs-prediction refutation (authentic shape from the twisted run) ---- */
+/* ---- method slide: a reality-vs-prediction refutation (authentic shape from the twisted run) ---- */
 (function refute() {
-  // reality revealed a '2' at the ringed cell where the theory predicted the flag would survive
+  // reality revealed a '2' at the ringed cell where the proposal predicted the flag would survive
   const A = "234432/2*4*32/234432/123321/1F2221/112211";
   const B = "234432/2*4*32/234432/123321/1F2F21/112211";
   const opts = { maxW: Math.min(240, innerWidth / 2 - 50), maxH: 200 };
@@ -219,35 +277,46 @@ const CODE_LINES = [
   }
 })();
 
-/* ---- moment 4: the chooser ---- */
-const HOOKS = {
-  minesweeper_twisted: { t: "Definitely Not Minesweeper", hook: "invented hours before the run — no training data can help. Watch it get fooled, refuted, and recover." },
-  sokoban_basic: { t: "Sokoban", hook: "it never saw a win — so it guessed the goal, planned inside its own model, and beat the real game. Optimally." },
-  minesweeper_knight: { t: "Minesweeper… or is it?", hook: "looks exactly like Minesweeper. The numbers count something else entirely." },
-  minesweeper: { t: "Minesweeper", hook: "the control: a game everyone knows, reverse-engineered blind in one pass." },
+/* ---- choosers ---- */
+const KNOWN = {
+  minesweeper: { t: "Minesweeper", hook: "numbers, flood-reveal, flags, win and loss — reverse-engineered blind, in one pass." },
   game2048: { t: "2048", hook: "slide, merge, score, spawn odds — every rule recovered, then handed back playable." },
 };
-const ORDER = ["minesweeper_twisted", "sokoban_basic", "minesweeper_knight", "minesweeper", "game2048"];
-(async function tiles() {
-  const box = document.getElementById("tiles");
+const INVENTED = {
+  minesweeper_knight: {
+    t: "Minesweeper… or is it?",
+    rule: "our invented rule: every number counts the mines a knight's-move away — not the touching cells.",
+    hook: "it assumed classic Minesweeper… then the evidence said otherwise. Caught the trick in one long think.",
+  },
+  minesweeper_twisted: {
+    t: "Definitely Not Minesweeper",
+    rule: "our invented rules: knight's-move counting AND the board wraps at the edges, like a torus.",
+    hook: "watch it get fooled, refuted by games it had never seen, and repair itself.",
+  },
+};
+async function buildTiles(boxId, defs, order) {
+  const box = document.getElementById(boxId);
   try {
     const idx = await gbData.fetchRunIndex();
     const byGame = {};
     for (const m of idx) if (m.converged && !byGame[m.game]) byGame[m.game] = m;
-    const known = ORDER.filter(g => byGame[g]).map(g => ({ m: byGame[g], h: HOOKS[g] }));
-    const extra = idx.filter(m => m.converged && !HOOKS[m.game]).map(m => ({ m, h: { t: m.title || m.game, hook: (m.discoveries && m.discoveries[0]) || "a recorded learning run" } }));
-    const all = known.concat(extra);
-    if (!all.length) throw new Error("no converged runs");
-    box.innerHTML = all.map(({ m, h }) =>
-      `<a class="tile" href="story.html?run=${encodeURIComponent(m.id)}">
-         <span class="t">${esc(h.t)}</span>
-         <span class="hook">${esc(h.hook)}</span>
-         <span class="go">▶ watch the story</span>
-       </a>`).join("");
+    const items = order.filter(g => byGame[g]);
+    if (!items.length) throw new Error("no runs found");
+    box.innerHTML = items.map(g => {
+      const m = byGame[g], h = defs[g];
+      return `<a class="tile" href="story.html?run=${encodeURIComponent(m.id)}">
+        <span class="t">${esc(h.t)}</span>
+        ${h.rule ? `<span class="rule">${esc(h.rule)}</span>` : ""}
+        <span class="hook">${esc(h.hook)}</span>
+        <span class="go">▶ watch the story</span>
+      </a>`;
+    }).join("");
   } catch (e) {
     box.innerHTML = `<div class="fail">could not load runs — ${esc(e.message)}</div>`;
   }
-})();
+}
+buildTiles("tilesKnown", KNOWN, ["minesweeper", "game2048"]);
+buildTiles("tilesInvented", INVENTED, ["minesweeper_knight", "minesweeper_twisted"]);
 </script>
 </body>
 </html>
