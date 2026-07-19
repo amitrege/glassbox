@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GLASSBOX — an AI agent that reverse-engineers games into code</title>
-<meta name="description" content="Instead of training an agent to win, GLASSBOX drops an AI agent into a game it has never seen and has it recover the rules themselves — as runnable code, tested against every observation.">
+<title>GLASSBOX: an AI agent that reverse-engineers games into code</title>
+<meta name="description" content="Instead of training an agent to win, GLASSBOX drops an AI agent into a game it has never seen and has it recover the rules themselves, as runnable code, tested against every observation.">
 <meta property="og:title" content="GLASSBOX">
-<meta property="og:description" content="Watch an AI agent reverse-engineer a game from scratch — and play the game it wrote.">
+<meta property="og:description" content="Watch an AI agent reverse-engineer a game from scratch, then play the game it wrote.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="gb.css">
 <style>
@@ -29,7 +29,12 @@
     text-align: center;
     position: relative;
   }
-  .kicker { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--dimmer); margin-bottom: 18px; }
+  .kicker {
+    font-size: 14px; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--green); font-weight: 700;
+    border-bottom: 2px solid var(--green); padding-bottom: 7px;
+    margin-bottom: 24px;
+  }
   .moment .line {
     font-size: clamp(24px, 3.8vw, 40px);
     line-height: 1.32; font-weight: 700; color: #e6edf3;
@@ -44,6 +49,7 @@
     line-height: 1.8; max-width: 680px;
   }
   .moment .quiet b { color: #e6edf3; }
+  .moment .quiet .ln { display: block; margin: 7px 0; }
   .moment .vis { margin-top: 36px; }
 
   /* reveal on scroll — pure CSS scroll-driven animation; browsers without
@@ -125,34 +131,37 @@
 
 <section class="moment" id="usual">
   <div class="kicker rv">the usual way</div>
-  <div class="line rv">Normally you'd <span class="dim2">train</span> an agent —<br>millions of rounds — until it <span class="dim2">wins</span>.</div>
+  <div class="line rv">Normally you'd <span class="dim2">train</span> an agent<br>over millions of rounds until it <span class="dim2">wins</span>.</div>
   <div class="vis rv d1">
     <div class="contrast">
       <div class="box">millions of games<br><b>of trial and error</b></div>
       <span class="arr">→</span>
       <div class="box">a neural network<br><b>that wins</b></div>
       <span class="arr">→</span>
-      <div class="box">ask it <i>why</i><br><b>silence.</b></div>
+      <div class="box">ask it<br><b>why</b></div>
     </div>
   </div>
-  <div class="quiet rv d2">the rules stay locked inside the weights — it can beat the game, but it can't explain it</div>
+  <div class="quiet rv d2"><span class="ln">The rules stay locked inside the weights.</span><span class="ln">It can beat the game, but it can't explain it.</span></div>
   <div class="cue" data-next="why">▾</div>
 </section>
 
 <section class="moment" id="why">
   <div class="kicker rv">why we built this</div>
   <div class="line rv">What if you wanted to<br><em>reverse-engineer</em> the game instead?</div>
-  <div class="quiet rv">Recover the rules <b>themselves — as runnable code</b>. A game designer could point this at
-    their own game and find the logic flaws before players do. A modder could recover mechanics
-    nobody documented. And anyone can read exactly what the agent believes:</div>
+  <div class="quiet rv">
+    <span class="ln">Recover the rules themselves, <b>as runnable code</b>.</span>
+    <span class="ln">A game designer could point this at their own game and find the logic flaws before players do.</span>
+    <span class="ln">A modder could recover mechanics nobody documented.</span>
+    <span class="ln">And anyone can read exactly what the agent believes:</span>
+  </div>
   <div class="vis rv d1"><div class="codecard" id="codeCard"></div></div>
-  <div class="viscap rv d2">actual output — code the agent wrote for one of the games below</div>
+  <div class="viscap rv d2">actual output: code the agent wrote for one of the games below</div>
   <div class="cue" data-next="method">▾</div>
 </section>
 
 <section class="moment" id="method">
   <div class="kicker rv">how it works</div>
-  <div class="line rv">It <span class="a">proposes</span> rules, <span class="a">writes them as code</span> —<br>then <span class="a">tests</span> that code against everything it has seen.</div>
+  <div class="line rv">It <span class="a">proposes</span> rules and <span class="a">writes them as code</span>,<br>then <span class="a">tests</span> that code against everything it has seen.</div>
   <div class="vis rv d1">
     <div class="loopline">
       <span class="step">play &amp; observe<small>every move logged</small></span>
@@ -168,14 +177,14 @@
       <div class="side"><span class="t pred">what its code predicted</span><span class="boardframe"><canvas id="cmpB"></canvas></span></div>
     </div>
   </div>
-  <div class="quiet rv d2">one wrong cell — like the ringed one — refutes a proposal. It revises until nothing reality deals can break it.</div>
+  <div class="quiet rv d2"><span class="ln">One wrong cell, like the ringed one, refutes a proposal.</span><span class="ln">It revises until nothing reality deals can break it.</span></div>
   <div class="cue" data-next="known">▾</div>
 </section>
 
 <section class="moment" id="known">
   <div class="kicker rv">see it work</div>
   <div class="line rv">Start with games you know.</div>
-  <div class="quiet rv">learned from a blank slate, then handed back — <b>playable</b></div>
+  <div class="quiet rv">learned from a blank slate, then <b>decompiled back to code</b></div>
   <div class="tiles rv d1" id="tilesKnown"></div>
   <div class="cue" data-next="invented">▾</div>
 </section>
@@ -183,12 +192,15 @@
 <section class="moment" id="invented">
   <div class="kicker rv">the real test</div>
   <div class="line rv">But those games are in every training set.<br>So we <em>invented new ones</em>.</div>
-  <div class="quiet rv">Same method, same agent — on rules we made up hours before the run, so no
-    training data can help. <b>We state our invented rules on each card; the agent had to find them the hard way.</b></div>
+  <div class="quiet rv">
+    <span class="ln">Same method, same agent, on rules we made up hours before the run.</span>
+    <span class="ln">No training data can help.</span>
+    <span class="ln"><b>Our invented rules are stated on each card. The agent had to find them the hard way.</b></span>
+  </div>
   <div class="tiles rv d1" id="tilesInvented"></div>
   <div class="endnote rv d2">
     <a class="subm" href="submit.html">or give it a game you invent →</a><br>
-    <span>every story is an append-only record — nothing is staged · reconstructions are entirely AI-written</span>
+    <span>every story is an append-only record · nothing is staged · reconstructions are entirely AI-written</span>
   </div>
 </section>
 
@@ -231,10 +243,10 @@ const FALLBACK_FRAMES = ["####/####/####/####", "####/#2##/####/####", "####/#2#
 
 /* ---- why slide: real learned code, typed in on reveal ---- */
 const CODE_LINES = [
-  '<span class="cm">// output of a run below — the agent\'s own code</span>',
+  '<span class="cm">// output of a run below: the agent\'s own code</span>',
   '<span class="kw">const</span> KNIGHT = [[-2,-1],[-2,1],[-1,-2],[-1,2],',
   '                [1,-2],[1,2],[2,-1],[2,1]];',
-  '<span class="cm">// digits count mines a knight\'s move away —</span>',
+  '<span class="cm">// digits count mines a knight\'s move away,</span>',
   '<span class="cm">// wrapping around the edges like a torus</span>',
   '<span class="kw">function</span> digit(g, x, y) {',
   '  <span class="kw">return</span> KNIGHT.filter(([dx,dy]) =>',
@@ -279,14 +291,14 @@ const CODE_LINES = [
 
 /* ---- choosers ---- */
 const KNOWN = {
-  minesweeper: { t: "Minesweeper", hook: "numbers, flood-reveal, flags, win and loss — reverse-engineered blind, in one pass." },
-  game2048: { t: "2048", hook: "slide, merge, score, spawn odds — every rule recovered, then handed back playable." },
+  minesweeper: { t: "Minesweeper", hook: "numbers, flood-reveal, flags, win and loss: reverse-engineered blind in one pass." },
+  game2048: { t: "2048", hook: "slide, merge, score, spawn odds. Every rule recovered, then handed back playable." },
 };
 const INVENTED = {
   minesweeper_knight: {
     t: "Minesweeper… or is it?",
-    rule: "our invented rule: every number counts the mines a knight's-move away — not the touching cells.",
-    hook: "it assumed classic Minesweeper… then the evidence said otherwise. Caught the trick in one long think.",
+    rule: "our invented rule: every number counts the mines a knight's-move away, not the touching cells.",
+    hook: "it assumed classic Minesweeper. Then the evidence said otherwise. Caught the trick in one long think.",
   },
   minesweeper_twisted: {
     t: "Definitely Not Minesweeper",
@@ -312,7 +324,7 @@ async function buildTiles(boxId, defs, order) {
       </a>`;
     }).join("");
   } catch (e) {
-    box.innerHTML = `<div class="fail">could not load runs — ${esc(e.message)}</div>`;
+    box.innerHTML = `<div class="fail">could not load runs: ${esc(e.message)}</div>`;
   }
 }
 buildTiles("tilesKnown", KNOWN, ["minesweeper", "game2048"]);
