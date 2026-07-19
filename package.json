@@ -1,14 +1,14 @@
 {
   "name": "glassbox",
   "version": "1.0.0",
-  "description": "Watch an AI learn a game by writing its rules as code",
+  "description": "An AI agent reverse-engineers games into runnable code, verified against every observation",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
@@ -16,5 +16,10 @@
   },
   "devDependencies": {
     "puppeteer-core": "^25.3.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amitrege/glassbox.git"
+  },
+  "homepage": "https://amitrege.github.io/glassbox/"
 }

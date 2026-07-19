@@ -1,5 +1,7 @@
 # GLASSBOX
 
+**Live demo: https://amitrege.github.io/glassbox/**
+
 **It plays a game it has never seen, figures out the rules by experimenting, and hands you back the rules as code — verified against every observation.**
 
 An AI agent (Claude Opus 4.8) probes an unknown environment, writes an executable model of it (JavaScript for grid games, actual PuzzleScript source for tile games), and a verifier replays the model against the full interaction log. Any mismatched cell is a refutation, fed back as a counterexample. The loop repeats until the model survives fresh, unseen games — and in the PuzzleScript track, until the agent **solves the real game using a plan computed entirely inside its own reconstruction**.
@@ -45,3 +47,10 @@ The demo site is fully static (`web/` + `runs/`). Any static host works:
 ```
 
 New runs are created offline by the scripts above and committed as data.
+
+## Acknowledgments
+
+- [PuzzleScript](https://github.com/increpare/PuzzleScript) by Stephen Lavelle (MIT): the engine behind the PuzzleScript track and the standalone clone export template.
+- [puzzlescript (npm)](https://github.com/philschatz/puzzlescript) by Philip Schatz (MIT): the headless engine used by the harness and verifier.
+- Harness design informed by the executable-world-models line of work: WorldCoder (Tang, Key, Ellis), Code World Models / GIF-MCTS (Dainese et al.), PoE-World (Piriyakulkij et al.), and Rodionov's ARC-AGI-3 baseline1.
+- Backend: [InsForge](https://insforge.dev). Model: Claude Opus 4.8 (Anthropic).
